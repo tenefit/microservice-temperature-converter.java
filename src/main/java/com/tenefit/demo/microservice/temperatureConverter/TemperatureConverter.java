@@ -17,9 +17,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
@@ -35,9 +33,6 @@ import com.github.rvesse.airline.annotations.restrictions.NotBlank;
 import com.github.rvesse.airline.annotations.restrictions.NotEmpty;
 import com.github.rvesse.airline.annotations.restrictions.Once;
 import com.github.rvesse.airline.annotations.restrictions.Required;
-import com.google.gson.Gson;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import com.tenefit.demo.microservice.temperatureConverter.TempUtils.TemperatureUnit;
 
 @Command(name = "temperature-converter", description = "Microservice for converting temperatures")
@@ -112,9 +107,6 @@ public class TemperatureConverter
 
     private KafkaConsumer<String, String> consumer;
 
-    private KafkaProducer<String, String> readingsproducer;
-    private KafkaProducer<String, String> readingsResponsesproducer;
-
     private static boolean isRunning = true;
 
     private TemperatureUnit currentTempUnit;
@@ -136,8 +128,6 @@ public class TemperatureConverter
 
     public void start() throws InterruptedException, ExecutionException
     {
-        System.out.println("TemperatureConverter microservice starting");
-
         processCommandLine();
 
         final Thread myThread = Thread.currentThread();
@@ -243,8 +233,12 @@ public class TemperatureConverter
 
         consumer.assign(topicPartitions);
 
-        readingsproducer = new KafkaProducer<>(kafkaProducerOptions);
-        readingsResponsesproducer = new KafkaProducer<>(kafkaProducerOptions);
+        SensorsMessageHandler sensorsMessageHandler = new SensorsMessageHandler(
+            readingsTopic, new DefaultKafkaProducerFactory(), kafkaProducerOptions);
+        ReadingsMessageHandler readingsMessageHandler = new ReadingsMessageHandler(
+            readingsReponsesTopic, new DefaultKafkaProducerFactory(), kafkaProducerOptions);
+
+        System.out.println("TemperatureConverter microservice listening");
 
         while (isRunning)
         {
@@ -259,50 +253,19 @@ public class TemperatureConverter
             while (recordsIterator.hasNext())
             {
                 ConsumerRecord<String, String> record = recordsIterator.next();
-                JsonObject message = new Gson().fromJson(record.value(), JsonObject.class);
-                JsonElement unitEl = message.get("unit");
-                if (unitEl == null)
-                {
-                    continue;
-                }
-                TemperatureUnit inboundTempUnit = TemperatureUnit.valueOf(unitEl.getAsString());
                 if (record.topic().equals(sensorsTopic))
                 {
-                    handleSensorsMessage(message, record.key(), inboundTempUnit);
+                    sensorsMessageHandler.handleMessage(record, currentTempUnit);
                 }
                 else
                 {
-                    handleReadingsMessage(inboundTempUnit);
+                    final TemperatureUnit newTempUnit = readingsMessageHandler.handleMessage(record);
+                    if (newTempUnit != null)
+                    {
+                        currentTempUnit = newTempUnit;
+                    }
                 }
             }
         }
-    }
-
-    private void handleSensorsMessage(
-        JsonObject message, String key, TemperatureUnit inboundTempUnit)
-        throws InterruptedException, ExecutionException
-    {
-        JsonElement valueEl = message.get("value");
-        if (valueEl == null)
-        {
-            return;
-        }
-        // TODO Kosher to build up the JSON message manually as a string? Or should I use GSON
-        // to build the object and generate the string?
-        String readingsMessage = String.format("{\"id\": \"%s\", \"unit\": \"%s\", \"value\": %d}", key,
-            currentTempUnit, TempUtils.convertTemp(valueEl.getAsInt(), inboundTempUnit, currentTempUnit));
-        final ProducerRecord<String, String> producerRecord = new ProducerRecord<>(readingsTopic, key, readingsMessage);
-        readingsproducer.send(producerRecord).get();
-    }
-
-    private void handleReadingsMessage(
-        TemperatureUnit inboundTempUnit) throws InterruptedException, ExecutionException
-    {
-        currentTempUnit = inboundTempUnit;
-        // TODO Kosher to build up the JSON message manually as a string? Or should I use GSON
-        // to build the object and generate the string?
-        String responseMessage = String.format("{\"unit\": \"%s\"}", currentTempUnit);
-        final ProducerRecord<String, String> producerRecord = new ProducerRecord<>(readingsReponsesTopic, null, responseMessage);
-        readingsResponsesproducer.send(producerRecord).get();
     }
 }
