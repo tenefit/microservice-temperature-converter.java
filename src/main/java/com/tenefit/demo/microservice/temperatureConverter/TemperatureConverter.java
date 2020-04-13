@@ -107,7 +107,7 @@ public class TemperatureConverter
 
     private KafkaConsumer<String, String> consumer;
 
-    private static boolean isRunning = true;
+    private boolean isRunning = true;
 
     private TemperatureUnit currentTempUnit;
 
