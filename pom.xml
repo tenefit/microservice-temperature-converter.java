@@ -25,11 +25,18 @@
     <checkstyle.config.location>src/conf/checkstyle/configuration.xml</checkstyle.config.location>
     <checkstyle.suppressions.location>src/conf/checkstyle/suppressions.xml</checkstyle.suppressions.location>
     <jacoco.coverage.ratio>0.3</jacoco.coverage.ratio>
-    <jacoco.missed.count>4</jacoco.missed.count>
+    <jacoco.missed.count>0</jacoco.missed.count>
 
     <junit.version>4.13</junit.version>
     <mockito.version>3.3.3</mockito.version>
   </properties>
+
+  <repositories>
+    <repository>
+      <id>kaazing.private</id>
+      <url>https://repository.kaazing.us/repository/mvn-private-releases/</url>
+    </repository>
+  </repositories>
 
   <dependencies>
     <dependency>
@@ -71,13 +78,6 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
-
-  <repositories>
-    <repository>
-      <id>kaazing.private</id>
-      <url>https://repository.kaazing.us/repository/mvn-private-releases/</url>
-    </repository>
-  </repositories>
 
   <build>
     <plugins>
