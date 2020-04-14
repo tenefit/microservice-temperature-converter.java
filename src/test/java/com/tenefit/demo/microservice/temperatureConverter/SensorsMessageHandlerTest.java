@@ -75,7 +75,7 @@ public class SensorsMessageHandlerTest
         Header[] headers = sendArg.getValue().headers().toArray();
         assertEquals(1, headers.length);
         Optional<Header> rowHeader = Arrays.stream(headers).filter(h -> h.key().equals("row")).findFirst();
-        assertTrue("no row header", rowHeader.isPresent());
+        assertTrue("missing row header", rowHeader.isPresent());
         String row = new String(rowHeader.get().value());
         assertEquals("1", row);
     }
