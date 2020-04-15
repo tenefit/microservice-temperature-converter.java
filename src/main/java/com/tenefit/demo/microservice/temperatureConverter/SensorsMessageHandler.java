@@ -9,20 +9,94 @@ import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Header;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.tenefit.demo.microservice.temperatureConverter.TempUtils.TemperatureUnit;
 
 public class SensorsMessageHandler
 {
-    String outboundTopic;
+    public enum TemperatureUnit
+    {
+        C
+        {
+            public int toCelsius(
+                int value)
+            {
+                return value;
+            }
 
-    private KafkaProducer<String, String> producer;
+            public int toFahrenheit(
+                int value)
+            {
+                return (int)Math.round(value / 5.0 * 9.0 + 32.0);
+            }
+
+            public int toKelvin(
+                int value)
+            {
+                return (int)Math.round(value + 273.2);
+            }
+        },
+
+        F
+        {
+            public int toCelsius(
+                int value)
+            {
+                return (int)Math.round((value - 32.0) / 9.0 * 5.0);
+            }
+
+            public int toFahrenheit(
+                int value)
+            {
+                return value;
+            }
+
+            public int toKelvin(
+                int value)
+            {
+                return (int)Math.round((value + 459.7) / 9.0 * 5.0);
+            }
+        },
+
+        K
+        {
+            public int toCelsius(
+                int value)
+            {
+                return (int)Math.round(value - 273.2);
+            }
+
+            public int toFahrenheit(
+                int value)
+            {
+                return (int)Math.round(value / 5.0 * 9.0 - 459.7);
+            }
+
+            public int toKelvin(
+                int value)
+            {
+                return value;
+            }
+        };
+
+        public abstract int toCelsius(
+            int value);
+
+        public abstract int toFahrenheit(
+            int value);
+
+        public abstract int toKelvin(
+            int value);
+    }
+
+    private final String outboundTopic;
+
+    private final Producer<String, String> producer;
 
     private final Gson gson;
 
@@ -38,6 +112,22 @@ public class SensorsMessageHandler
         gson = new Gson();
     }
 
+    public static int convertTemperature(
+        int temperature,
+        TemperatureUnit fromUnit,
+        TemperatureUnit toUnit)
+    {
+        switch (toUnit)
+        {
+        case C:
+            return fromUnit.toCelsius(temperature);
+        case F:
+            return fromUnit.toFahrenheit(temperature);
+        default:
+            return fromUnit.toKelvin(temperature);
+        }
+    }
+
     public void handleMessage(
         ConsumerRecord<String, String> record,
         TemperatureUnit currentTempUnit) throws InterruptedException, ExecutionException
@@ -51,23 +141,21 @@ public class SensorsMessageHandler
             return;
         }
 
-        JsonElement unitEl = message.get("unit");
-        if (unitEl == null)
+        JsonElement unit = message.get("unit");
+        if (unit == null)
         {
             return;
         }
-        TemperatureUnit inboundTempUnit = TemperatureUnit.valueOf(unitEl.getAsString());
-        JsonElement valueEl = message.get("value");
-        if (valueEl == null)
+        TemperatureUnit inboundTempUnit = TemperatureUnit.valueOf(unit.getAsString());
+        JsonElement value = message.get("value");
+        if (value == null)
         {
             return;
         }
-        // TODO Kosher to build up the JSON message manually as a string? Or should I use GSON
-        // to build the object and generate the string?
         String readingsMessage = String.format("{\"id\": \"%s\", \"unit\": \"%s\", \"value\": %d}",
             record.key(),
             currentTempUnit,
-            TempUtils.convertTemp(valueEl.getAsInt(), inboundTempUnit, currentTempUnit));
+            convertTemperature(value.getAsInt(), inboundTempUnit, currentTempUnit));
         final ProducerRecord<String, String> producerRecord = new ProducerRecord<>(outboundTopic, record.key(), readingsMessage);
         producerRecord.headers().add("row", rowHeader.get().value());
         producer.send(producerRecord).get();

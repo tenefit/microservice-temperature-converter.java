@@ -29,11 +29,10 @@ import org.mockito.ArgumentCaptor;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.tenefit.demo.microservice.temperatureConverter.TempUtils.TemperatureUnit;
+import com.tenefit.demo.microservice.temperatureConverter.SensorsMessageHandler.TemperatureUnit;
 
 public class SensorsMessageHandlerTest
 {
-    // TODO Is this the correct way to do a global member variable?
     private Gson gson = new Gson();
 
     @SuppressWarnings("unchecked")
@@ -47,7 +46,7 @@ public class SensorsMessageHandlerTest
 
         when(kafkaProducerFactory.newKafkaProducer(any(Properties.class))).thenReturn(producer);
         when(record.key()).thenReturn("1");
-        when(record.value()).thenReturn("{\"id\":\"1\",\"unit\":\"F\",\"value\":32}");
+        when(record.value()).thenReturn("{\"id\":\"1\",\"unit\":\"C\",\"value\":0}");
         RecordHeaders recordHeaders = new RecordHeaders();
         recordHeaders.add("row", "1".getBytes());
         when(record.headers()).thenReturn(recordHeaders);
@@ -55,7 +54,7 @@ public class SensorsMessageHandlerTest
 
         Properties props = new Properties();
         SensorsMessageHandler handler = new SensorsMessageHandler("readings", kafkaProducerFactory, props);
-        handler.handleMessage(record, TemperatureUnit.C);
+        handler.handleMessage(record, TemperatureUnit.F);
 
         ArgumentCaptor<ProducerRecord<String, String>> sendArg = ArgumentCaptor.forClass(ProducerRecord.class);
         verify(producer).send(sendArg.capture());
@@ -63,15 +62,15 @@ public class SensorsMessageHandlerTest
         assertEquals("1", sendArg.getValue().key());
         JsonObject message = gson.fromJson(sendArg.getValue().value(), JsonObject.class);
         assertEquals(3, message.keySet().size());
-        JsonElement idEl = message.get("id");
-        assertNotNull(idEl);
-        assertEquals("1", idEl.getAsString());
-        JsonElement unitEl = message.get("unit");
-        assertNotNull(unitEl);
-        assertEquals("C", unitEl.getAsString());
-        JsonElement valueEl = message.get("value");
-        assertNotNull(valueEl);
-        assertEquals(0, valueEl.getAsInt());
+        JsonElement id = message.get("id");
+        assertNotNull(id);
+        assertEquals("1", id.getAsString());
+        JsonElement unit = message.get("unit");
+        assertNotNull(unit);
+        assertEquals("F", unit.getAsString());
+        JsonElement value = message.get("value");
+        assertNotNull(value);
+        assertEquals(32, value.getAsInt());
         Header[] headers = sendArg.getValue().headers().toArray();
         assertEquals(1, headers.length);
         Optional<Header> rowHeader = Arrays.stream(headers).filter(h -> h.key().equals("row")).findFirst();
@@ -105,9 +104,9 @@ public class SensorsMessageHandlerTest
         assertNull(sendArg.getValue().key());
         JsonObject message = gson.fromJson(sendArg.getValue().value(), JsonObject.class);
         assertEquals(1, message.keySet().size());
-        JsonElement unitEl = message.get("unit");
-        assertNotNull(unitEl);
-        assertEquals("C", unitEl.getAsString());
+        JsonElement unit = message.get("unit");
+        assertNotNull(unit);
+        assertEquals("C", unit.getAsString());
         Header[] headers = sendArg.getValue().headers().toArray();
         assertEquals(0, headers.length);
     }
@@ -137,9 +136,9 @@ public class SensorsMessageHandlerTest
         assertNull(sendArg.getValue().key());
         JsonObject message = gson.fromJson(sendArg.getValue().value(), JsonObject.class);
         assertEquals(1, message.keySet().size());
-        JsonElement unitEl = message.get("unit");
-        assertNotNull(unitEl);
-        assertEquals("F", unitEl.getAsString());
+        JsonElement unit = message.get("unit");
+        assertNotNull(unit);
+        assertEquals("F", unit.getAsString());
         Header[] headers = sendArg.getValue().headers().toArray();
         assertEquals(0, headers.length);
     }
@@ -169,10 +168,64 @@ public class SensorsMessageHandlerTest
         assertNull(sendArg.getValue().key());
         JsonObject message = gson.fromJson(sendArg.getValue().value(), JsonObject.class);
         assertEquals(1, message.keySet().size());
-        JsonElement unitEl = message.get("unit");
-        assertNotNull(unitEl);
-        assertEquals("K", unitEl.getAsString());
+        JsonElement unit = message.get("unit");
+        assertNotNull(unit);
+        assertEquals("K", unit.getAsString());
         Header[] headers = sendArg.getValue().headers().toArray();
         assertEquals(0, headers.length);
+    }
+
+    @Test
+    public void shouldConvertCelsiusToCelsius() throws Exception
+    {
+        assertEquals(0, SensorsMessageHandler.convertTemperature(0, TemperatureUnit.C, TemperatureUnit.C));
+    }
+
+    @Test
+    public void shouldConvertCelsiusToFahrenheit() throws Exception
+    {
+        assertEquals(32, SensorsMessageHandler.convertTemperature(0, TemperatureUnit.C, TemperatureUnit.F));
+    }
+
+    @Test
+    public void shouldConvertCelsiusToKelvin() throws Exception
+    {
+        assertEquals(273, SensorsMessageHandler.convertTemperature(0, TemperatureUnit.C, TemperatureUnit.K));
+    }
+
+    @Test
+    public void shouldConvertFahrenheitToCelsius() throws Exception
+    {
+        assertEquals(-18, SensorsMessageHandler.convertTemperature(0, TemperatureUnit.F, TemperatureUnit.C));
+    }
+
+    @Test
+    public void shouldConvertFahrenheitToFahrenheit() throws Exception
+    {
+        assertEquals(0, SensorsMessageHandler.convertTemperature(0, TemperatureUnit.F, TemperatureUnit.F));
+    }
+
+    @Test
+    public void shouldConvertFahrenheitToKelvin() throws Exception
+    {
+        assertEquals(255, SensorsMessageHandler.convertTemperature(0, TemperatureUnit.F, TemperatureUnit.K));
+    }
+
+    @Test
+    public void shouldConvertKelvinToCelsius() throws Exception
+    {
+        assertEquals(-273, SensorsMessageHandler.convertTemperature(0, TemperatureUnit.K, TemperatureUnit.C));
+    }
+
+    @Test
+    public void shouldConvertKelvinToFahrenheit() throws Exception
+    {
+        assertEquals(-460, SensorsMessageHandler.convertTemperature(0, TemperatureUnit.K, TemperatureUnit.F));
+    }
+
+    @Test
+    public void shouldConvertKelvinToKelvin() throws Exception
+    {
+        assertEquals(0, SensorsMessageHandler.convertTemperature(0, TemperatureUnit.K, TemperatureUnit.K));
     }
 }

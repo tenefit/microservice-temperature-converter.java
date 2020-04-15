@@ -7,19 +7,21 @@ import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.tenefit.demo.microservice.temperatureConverter.TempUtils.TemperatureUnit;
+import com.tenefit.demo.microservice.temperatureConverter.SensorsMessageHandler.TemperatureUnit;
 
 public class ReadingsMessageHandler
 {
-    String outboundTopic;
+    private final String outboundTopic;
 
-    private KafkaProducer<String, String> producer;
+    private final Producer<String, String> producer;
+
+    private final Gson gson;
 
     public ReadingsMessageHandler(
         String outboundTopic,
@@ -29,20 +31,20 @@ public class ReadingsMessageHandler
         this.outboundTopic = outboundTopic;
 
         producer = kafkaProducerFactory.newKafkaProducer(kafkaProducerOptions);
+
+        gson = new Gson();
     }
 
     public TemperatureUnit handleMessage(
         ConsumerRecord<String, String> record) throws InterruptedException, ExecutionException
     {
-        JsonObject message = new Gson().fromJson(record.value(), JsonObject.class);
-        JsonElement unitEl = message.get("unit");
-        if (unitEl == null)
+        JsonObject message = gson.fromJson(record.value(), JsonObject.class);
+        JsonElement unit = message.get("unit");
+        if (unit == null)
         {
             return null;
         }
-        TemperatureUnit inboundTempUnit = TemperatureUnit.valueOf(unitEl.getAsString());
-        // TODO Kosher to build up the JSON message manually as a string? Or should I use GSON
-        // to build the object and generate the string?
+        TemperatureUnit inboundTempUnit = TemperatureUnit.valueOf(unit.getAsString());
         String responseMessage = String.format("{\"unit\": \"%s\"}", inboundTempUnit);
         final ProducerRecord<String, String> producerRecord = new ProducerRecord<>(outboundTopic, null, responseMessage);
         producer.send(producerRecord).get();
