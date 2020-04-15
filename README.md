@@ -34,21 +34,14 @@ After receiving sensor readings (see [Receiving original sensor readings](#recei
 
 ### Receiving control messages
 
-The microservice can be controlled to changed the target temperature unit.
+The microservice can be controlled to changed the target temperature unit. Upon receiving a control message the microservice will change its behavior accordingly, and send a response as a confirmation. The response topic used will be that from the `$http.replyTo` header, and will the response message will include a `$http.correlationId` header with the same value as that received.
 
 - **topic:** `readings.requests` (specified with `--readings-requests-topic`)
-- **headers:** none
-- **payload:**
-  ```json
-  { "unit": "F" }
-  ```
-
-### Responding to control messages
-
-Upon receiving a control message (see [Receiving control messages](#receiving-control-messages)) the microservice will change its behavior accordingly, and send a response as a confirmation.
-
-- **topic:** `readings.responses` (specified with `--readings-responses-topic`)
-- **headers:** none
+- **headers:**
+  | name | value |
+  | ---- | ----: |
+  | $http.replyTo | readings.responses |
+  | $http.correlationId | 123 |
 - **payload:**
   ```json
   { "unit": "F" }

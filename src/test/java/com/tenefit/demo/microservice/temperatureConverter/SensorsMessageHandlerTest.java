@@ -3,6 +3,8 @@
  */
 package com.tenefit.demo.microservice.temperatureConverter;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -13,9 +15,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -37,7 +41,7 @@ public class SensorsMessageHandlerTest
 
     @SuppressWarnings("unchecked")
     @Test
-    public void shouldReceiveSensorMessageAndPublishReading() throws Exception
+    public void shouldReceiveSensorMessageThenPublishReading() throws Exception
     {
         final KafkaProducerFactory kafkaProducerFactory = mock(KafkaProducerFactory.class);
         final KafkaProducer<String, String> producer = mock(KafkaProducer.class);
@@ -45,11 +49,11 @@ public class SensorsMessageHandlerTest
         final Future<RecordMetadata> future = mock(Future.class);
 
         when(kafkaProducerFactory.newKafkaProducer(any(Properties.class))).thenReturn(producer);
+        RecordHeaders recordHeaders = new RecordHeaders();
+        recordHeaders.add("row", "1".getBytes(UTF_8));
+        when(record.headers()).thenReturn(recordHeaders);
         when(record.key()).thenReturn("1");
         when(record.value()).thenReturn("{\"id\":\"1\",\"unit\":\"C\",\"value\":0}");
-        RecordHeaders recordHeaders = new RecordHeaders();
-        recordHeaders.add("row", "1".getBytes());
-        when(record.headers()).thenReturn(recordHeaders);
         when(producer.send(any(ProducerRecord.class))).thenReturn(future);
 
         Properties props = new Properties();
@@ -60,17 +64,17 @@ public class SensorsMessageHandlerTest
         verify(producer).send(sendArg.capture());
         assertEquals("readings", sendArg.getValue().topic());
         assertEquals("1", sendArg.getValue().key());
-        JsonObject message = gson.fromJson(sendArg.getValue().value(), JsonObject.class);
-        assertEquals(3, message.keySet().size());
-        JsonElement id = message.get("id");
-        assertNotNull(id);
-        assertEquals("1", id.getAsString());
-        JsonElement unit = message.get("unit");
-        assertNotNull(unit);
-        assertEquals("F", unit.getAsString());
-        JsonElement value = message.get("value");
-        assertNotNull(value);
-        assertEquals(32, value.getAsInt());
+        JsonObject messageAsJson = gson.fromJson(sendArg.getValue().value(), JsonObject.class);
+        assertEquals(3, messageAsJson.keySet().size());
+        JsonElement idAsJson = messageAsJson.get("id");
+        assertNotNull(idAsJson);
+        assertEquals("1", idAsJson.getAsString());
+        JsonElement unitAsJson = messageAsJson.get("unit");
+        assertNotNull(unitAsJson);
+        assertEquals("F", unitAsJson.getAsString());
+        JsonElement valueAsJson = messageAsJson.get("value");
+        assertNotNull(valueAsJson);
+        assertEquals(32, valueAsJson.getAsInt());
         Header[] headers = sendArg.getValue().headers().toArray();
         assertEquals(1, headers.length);
         Optional<Header> rowHeader = Arrays.stream(headers).filter(h -> h.key().equals("row")).findFirst();
@@ -81,7 +85,7 @@ public class SensorsMessageHandlerTest
 
     @SuppressWarnings("unchecked")
     @Test
-    public void shouldReceiveCelsiusRequestAndRespond() throws Exception
+    public void shouldReceiveRequestThenRespondWithCorrectMetadata() throws Exception
     {
         final KafkaProducerFactory kafkaProducerFactory = mock(KafkaProducerFactory.class);
         final KafkaProducer<String, String> producer = mock(KafkaProducer.class);
@@ -89,31 +93,66 @@ public class SensorsMessageHandlerTest
         final Future<RecordMetadata> future = mock(Future.class);
 
         when(kafkaProducerFactory.newKafkaProducer(any(Properties.class))).thenReturn(producer);
+        RecordHeaders recordHeaders = new RecordHeaders();
+        recordHeaders.add("$http.replyTo", "readings.responses".getBytes(UTF_8));
+        recordHeaders.add("$http.correlationId", "123".getBytes(UTF_8));
+        when(record.headers()).thenReturn(recordHeaders);
         when(record.value()).thenReturn("{\"unit\":\"C\"}");
         when(producer.send(any(ProducerRecord.class))).thenReturn(future);
 
         Properties props = new Properties();
-        ReadingsMessageHandler handler = new ReadingsMessageHandler("readings.responses", kafkaProducerFactory, props);
+        ReadingsMessageHandler handler = new ReadingsMessageHandler(kafkaProducerFactory, props);
+        handler.handleMessage(record);
+
+        ArgumentCaptor<ProducerRecord<String, String>> sendArg = ArgumentCaptor.forClass(ProducerRecord.class);
+        verify(producer).send(sendArg.capture());
+        assertEquals("readings.responses", sendArg.getValue().topic());
+        Header[] headers = sendArg.getValue().headers().toArray();
+        assertEquals(1, headers.length);
+        List<Header> correlationHeaders = Arrays.stream(headers)
+            .filter(h -> h.key().equals("$http.correlationId"))
+            .collect(Collectors.toList());
+        assertEquals(1, correlationHeaders.size());
+        System.out.format("h=%s\n", new String(correlationHeaders.get(0).value()));
+        assertArrayEquals("123".getBytes(UTF_8), correlationHeaders.get(0).value());
+        assertNull(sendArg.getValue().key());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void shouldReceiveCelsiusRequestThenChangeUnitAndRespond() throws Exception
+    {
+        final KafkaProducerFactory kafkaProducerFactory = mock(KafkaProducerFactory.class);
+        final KafkaProducer<String, String> producer = mock(KafkaProducer.class);
+        final ConsumerRecord<String, String> record = mock(ConsumerRecord.class);
+        final Future<RecordMetadata> future = mock(Future.class);
+
+        when(kafkaProducerFactory.newKafkaProducer(any(Properties.class))).thenReturn(producer);
+        RecordHeaders recordHeaders = new RecordHeaders();
+        recordHeaders.add("$http.replyTo", "readings.responses".getBytes(UTF_8));
+        recordHeaders.add("$http.correlationId", "123".getBytes(UTF_8));
+        when(record.headers()).thenReturn(recordHeaders);
+        when(record.value()).thenReturn("{\"unit\":\"C\"}");
+        when(producer.send(any(ProducerRecord.class))).thenReturn(future);
+
+        Properties props = new Properties();
+        ReadingsMessageHandler handler = new ReadingsMessageHandler(kafkaProducerFactory, props);
         TemperatureUnit newTempUnit = handler.handleMessage(record);
 
         assertEquals(TemperatureUnit.C, newTempUnit);
 
         ArgumentCaptor<ProducerRecord<String, String>> sendArg = ArgumentCaptor.forClass(ProducerRecord.class);
         verify(producer).send(sendArg.capture());
-        assertEquals("readings.responses", sendArg.getValue().topic());
-        assertNull(sendArg.getValue().key());
-        JsonObject message = gson.fromJson(sendArg.getValue().value(), JsonObject.class);
-        assertEquals(1, message.keySet().size());
-        JsonElement unit = message.get("unit");
-        assertNotNull(unit);
-        assertEquals("C", unit.getAsString());
-        Header[] headers = sendArg.getValue().headers().toArray();
-        assertEquals(0, headers.length);
+        JsonObject messageAsJson = gson.fromJson(sendArg.getValue().value(), JsonObject.class);
+        assertEquals(1, messageAsJson.keySet().size());
+        JsonElement unitAsJson = messageAsJson.get("unit");
+        assertNotNull(unitAsJson);
+        assertEquals("C", unitAsJson.getAsString());
     }
 
     @SuppressWarnings("unchecked")
     @Test
-    public void shouldReceiveFahrenheitRequestAndRespond() throws Exception
+    public void shouldReceiveFahrenheitRequestThenChangeUnitAndRespond() throws Exception
     {
         final KafkaProducerFactory kafkaProducerFactory = mock(KafkaProducerFactory.class);
         final KafkaProducer<String, String> producer = mock(KafkaProducer.class);
@@ -121,31 +160,31 @@ public class SensorsMessageHandlerTest
         final Future<RecordMetadata> future = mock(Future.class);
 
         when(kafkaProducerFactory.newKafkaProducer(any(Properties.class))).thenReturn(producer);
+        RecordHeaders recordHeaders = new RecordHeaders();
+        recordHeaders.add("$http.replyTo", "readings.responses".getBytes(UTF_8));
+        recordHeaders.add("$http.correlationId", "123".getBytes(UTF_8));
+        when(record.headers()).thenReturn(recordHeaders);
         when(record.value()).thenReturn("{\"unit\":\"F\"}");
         when(producer.send(any(ProducerRecord.class))).thenReturn(future);
 
         Properties props = new Properties();
-        ReadingsMessageHandler handler = new ReadingsMessageHandler("readings.responses", kafkaProducerFactory, props);
+        ReadingsMessageHandler handler = new ReadingsMessageHandler(kafkaProducerFactory, props);
         TemperatureUnit newTempUnit = handler.handleMessage(record);
 
         assertEquals(TemperatureUnit.F, newTempUnit);
 
         ArgumentCaptor<ProducerRecord<String, String>> sendArg = ArgumentCaptor.forClass(ProducerRecord.class);
         verify(producer).send(sendArg.capture());
-        assertEquals("readings.responses", sendArg.getValue().topic());
-        assertNull(sendArg.getValue().key());
-        JsonObject message = gson.fromJson(sendArg.getValue().value(), JsonObject.class);
-        assertEquals(1, message.keySet().size());
-        JsonElement unit = message.get("unit");
-        assertNotNull(unit);
-        assertEquals("F", unit.getAsString());
-        Header[] headers = sendArg.getValue().headers().toArray();
-        assertEquals(0, headers.length);
+        JsonObject messageAsJson = gson.fromJson(sendArg.getValue().value(), JsonObject.class);
+        assertEquals(1, messageAsJson.keySet().size());
+        JsonElement unitAsJson = messageAsJson.get("unit");
+        assertNotNull(unitAsJson);
+        assertEquals("F", unitAsJson.getAsString());
     }
 
     @SuppressWarnings("unchecked")
     @Test
-    public void shouldReceiveKelvinRequestAndRespond() throws Exception
+    public void shouldReceiveKelvinRequestAndThenChangeUnitAndRespond() throws Exception
     {
         final KafkaProducerFactory kafkaProducerFactory = mock(KafkaProducerFactory.class);
         final KafkaProducer<String, String> producer = mock(KafkaProducer.class);
@@ -153,26 +192,26 @@ public class SensorsMessageHandlerTest
         final Future<RecordMetadata> future = mock(Future.class);
 
         when(kafkaProducerFactory.newKafkaProducer(any(Properties.class))).thenReturn(producer);
+        RecordHeaders recordHeaders = new RecordHeaders();
+        recordHeaders.add("$http.replyTo", "readings.responses".getBytes(UTF_8));
+        recordHeaders.add("$http.correlationId", "123".getBytes(UTF_8));
+        when(record.headers()).thenReturn(recordHeaders);
         when(record.value()).thenReturn("{\"unit\":\"K\"}");
         when(producer.send(any(ProducerRecord.class))).thenReturn(future);
 
         Properties props = new Properties();
-        ReadingsMessageHandler handler = new ReadingsMessageHandler("readings.responses", kafkaProducerFactory, props);
+        ReadingsMessageHandler handler = new ReadingsMessageHandler(kafkaProducerFactory, props);
         TemperatureUnit newTempUnit = handler.handleMessage(record);
 
         assertEquals(TemperatureUnit.K, newTempUnit);
 
         ArgumentCaptor<ProducerRecord<String, String>> sendArg = ArgumentCaptor.forClass(ProducerRecord.class);
         verify(producer).send(sendArg.capture());
-        assertEquals("readings.responses", sendArg.getValue().topic());
-        assertNull(sendArg.getValue().key());
-        JsonObject message = gson.fromJson(sendArg.getValue().value(), JsonObject.class);
-        assertEquals(1, message.keySet().size());
-        JsonElement unit = message.get("unit");
-        assertNotNull(unit);
-        assertEquals("K", unit.getAsString());
-        Header[] headers = sendArg.getValue().headers().toArray();
-        assertEquals(0, headers.length);
+        JsonObject messageAsJson = gson.fromJson(sendArg.getValue().value(), JsonObject.class);
+        assertEquals(1, messageAsJson.keySet().size());
+        JsonElement unitAsJson = messageAsJson.get("unit");
+        assertNotNull(unitAsJson);
+        assertEquals("K", unitAsJson.getAsString());
     }
 
     @Test

@@ -80,15 +80,6 @@ public class TemperatureConverter
     private String readingsRequestsTopic;
 
     @Option(
-        name = { "--readings-responses-topic" },
-        description = "Output topic for microservice command responses")
-    @Required
-    @Once
-    @NotBlank
-    @NotEmpty
-    private String readingsReponsesTopic;
-
-    @Option(
         name = "--kafka-consumer-property",
         description = "Kafka consumer property. May be repeated. Format: <key>=<value>. e.g. session.timeout.ms=5000")
     @NotBlank
@@ -236,7 +227,7 @@ public class TemperatureConverter
         SensorsMessageHandler sensorsMessageHandler = new SensorsMessageHandler(
             readingsTopic, new DefaultKafkaProducerFactory(), kafkaProducerOptions);
         ReadingsMessageHandler readingsMessageHandler = new ReadingsMessageHandler(
-            readingsReponsesTopic, new DefaultKafkaProducerFactory(), kafkaProducerOptions);
+            new DefaultKafkaProducerFactory(), kafkaProducerOptions);
 
         System.out.println("TemperatureConverter microservice listening");
 
