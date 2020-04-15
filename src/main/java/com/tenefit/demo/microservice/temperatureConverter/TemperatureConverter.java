@@ -33,7 +33,6 @@ import com.github.rvesse.airline.annotations.restrictions.NotBlank;
 import com.github.rvesse.airline.annotations.restrictions.NotEmpty;
 import com.github.rvesse.airline.annotations.restrictions.Once;
 import com.github.rvesse.airline.annotations.restrictions.Required;
-import com.tenefit.demo.microservice.temperatureConverter.SensorsMessageHandler.TemperatureUnit;
 
 @Command(name = "temperature-converter", description = "Microservice for converting temperatures")
 public class TemperatureConverter

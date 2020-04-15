@@ -29,7 +29,6 @@ import org.mockito.ArgumentCaptor;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.tenefit.demo.microservice.temperatureConverter.SensorsMessageHandler.TemperatureUnit;
 
 public class SensorsMessageHandlerTest
 {
@@ -77,59 +76,5 @@ public class SensorsMessageHandlerTest
         assertTrue("missing row header", rowHeader.isPresent());
         String row = new String(rowHeader.get().value());
         assertEquals("1", row);
-    }
-
-    @Test
-    public void shouldConvertCelsiusToCelsius() throws Exception
-    {
-        assertEquals(0, SensorsMessageHandler.convertTemperature(0, TemperatureUnit.C, TemperatureUnit.C));
-    }
-
-    @Test
-    public void shouldConvertCelsiusToFahrenheit() throws Exception
-    {
-        assertEquals(32, SensorsMessageHandler.convertTemperature(0, TemperatureUnit.C, TemperatureUnit.F));
-    }
-
-    @Test
-    public void shouldConvertCelsiusToKelvin() throws Exception
-    {
-        assertEquals(273, SensorsMessageHandler.convertTemperature(0, TemperatureUnit.C, TemperatureUnit.K));
-    }
-
-    @Test
-    public void shouldConvertFahrenheitToCelsius() throws Exception
-    {
-        assertEquals(-18, SensorsMessageHandler.convertTemperature(0, TemperatureUnit.F, TemperatureUnit.C));
-    }
-
-    @Test
-    public void shouldConvertFahrenheitToFahrenheit() throws Exception
-    {
-        assertEquals(0, SensorsMessageHandler.convertTemperature(0, TemperatureUnit.F, TemperatureUnit.F));
-    }
-
-    @Test
-    public void shouldConvertFahrenheitToKelvin() throws Exception
-    {
-        assertEquals(255, SensorsMessageHandler.convertTemperature(0, TemperatureUnit.F, TemperatureUnit.K));
-    }
-
-    @Test
-    public void shouldConvertKelvinToCelsius() throws Exception
-    {
-        assertEquals(-273, SensorsMessageHandler.convertTemperature(0, TemperatureUnit.K, TemperatureUnit.C));
-    }
-
-    @Test
-    public void shouldConvertKelvinToFahrenheit() throws Exception
-    {
-        assertEquals(-460, SensorsMessageHandler.convertTemperature(0, TemperatureUnit.K, TemperatureUnit.F));
-    }
-
-    @Test
-    public void shouldConvertKelvinToKelvin() throws Exception
-    {
-        assertEquals(0, SensorsMessageHandler.convertTemperature(0, TemperatureUnit.K, TemperatureUnit.K));
     }
 }

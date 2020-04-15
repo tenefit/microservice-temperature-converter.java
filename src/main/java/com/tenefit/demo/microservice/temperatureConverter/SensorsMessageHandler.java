@@ -19,81 +19,6 @@ import com.google.gson.JsonObject;
 
 public class SensorsMessageHandler
 {
-    public enum TemperatureUnit
-    {
-        C
-        {
-            public int toCelsius(
-                int value)
-            {
-                return value;
-            }
-
-            public int toFahrenheit(
-                int value)
-            {
-                return (int)Math.round(value / 5.0 * 9.0 + 32.0);
-            }
-
-            public int toKelvin(
-                int value)
-            {
-                return (int)Math.round(value + 273.2);
-            }
-        },
-
-        F
-        {
-            public int toCelsius(
-                int value)
-            {
-                return (int)Math.round((value - 32.0) / 9.0 * 5.0);
-            }
-
-            public int toFahrenheit(
-                int value)
-            {
-                return value;
-            }
-
-            public int toKelvin(
-                int value)
-            {
-                return (int)Math.round((value + 459.7) / 9.0 * 5.0);
-            }
-        },
-
-        K
-        {
-            public int toCelsius(
-                int value)
-            {
-                return (int)Math.round(value - 273.2);
-            }
-
-            public int toFahrenheit(
-                int value)
-            {
-                return (int)Math.round(value / 5.0 * 9.0 - 459.7);
-            }
-
-            public int toKelvin(
-                int value)
-            {
-                return value;
-            }
-        };
-
-        public abstract int toCelsius(
-            int value);
-
-        public abstract int toFahrenheit(
-            int value);
-
-        public abstract int toKelvin(
-            int value);
-    }
-
     private final String outboundTopic;
 
     private final Producer<String, String> producer;
@@ -110,22 +35,6 @@ public class SensorsMessageHandler
         producer = kafkaProducerFactory.newKafkaProducer(kafkaProducerOptions);
 
         gson = new Gson();
-    }
-
-    public static int convertTemperature(
-        int temperature,
-        TemperatureUnit fromUnit,
-        TemperatureUnit toUnit)
-    {
-        switch (toUnit)
-        {
-        case C:
-            return fromUnit.toCelsius(temperature);
-        case F:
-            return fromUnit.toFahrenheit(temperature);
-        default:
-            return fromUnit.toKelvin(temperature);
-        }
     }
 
     public void handleMessage(
@@ -155,10 +64,9 @@ public class SensorsMessageHandler
         String readingsMessage = String.format("{\"id\": \"%s\", \"unit\": \"%s\", \"value\": %d}",
             record.key(),
             currentUnit,
-            convertTemperature(valueAsJson.getAsInt(), inboundUnit, currentUnit));
+            inboundUnit.convertTo(valueAsJson.getAsInt(), currentUnit));
         final ProducerRecord<String, String> producerRecord = new ProducerRecord<>(outboundTopic, record.key(), readingsMessage);
         producerRecord.headers().add("row", rowHeader.get().value());
         producer.send(producerRecord).get();
     }
-
 }
