@@ -15,7 +15,6 @@ import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Properties;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
@@ -40,12 +39,10 @@ public class ReadingsMessageHandlerTest
     @Test
     public void shouldReceiveRequestThenRespondWithCorrectMetadata() throws Exception
     {
-        final KafkaProducerFactory kafkaProducerFactory = mock(KafkaProducerFactory.class);
         final KafkaProducer<String, String> producer = mock(KafkaProducer.class);
         final ConsumerRecord<String, String> record = mock(ConsumerRecord.class);
         final Future<RecordMetadata> future = mock(Future.class);
 
-        when(kafkaProducerFactory.newKafkaProducer(any(Properties.class))).thenReturn(producer);
         RecordHeaders recordHeaders = new RecordHeaders();
         recordHeaders.add("$http.replyTo", "readings.responses".getBytes(UTF_8));
         recordHeaders.add("$http.correlationId", "123".getBytes(UTF_8));
@@ -53,8 +50,7 @@ public class ReadingsMessageHandlerTest
         when(record.value()).thenReturn("{\"unit\":\"C\"}");
         when(producer.send(any(ProducerRecord.class))).thenReturn(future);
 
-        Properties props = new Properties();
-        ReadingsMessageHandler handler = new ReadingsMessageHandler(kafkaProducerFactory, props);
+        ReadingsMessageHandler handler = new ReadingsMessageHandler(producer);
         handler.handleMessage(record);
 
         ArgumentCaptor<ProducerRecord<String, String>> sendArg = ArgumentCaptor.forClass(ProducerRecord.class);
@@ -75,12 +71,10 @@ public class ReadingsMessageHandlerTest
     @Test
     public void shouldReceiveCelsiusRequestThenChangeUnitAndRespond() throws Exception
     {
-        final KafkaProducerFactory kafkaProducerFactory = mock(KafkaProducerFactory.class);
         final KafkaProducer<String, String> producer = mock(KafkaProducer.class);
         final ConsumerRecord<String, String> record = mock(ConsumerRecord.class);
         final Future<RecordMetadata> future = mock(Future.class);
 
-        when(kafkaProducerFactory.newKafkaProducer(any(Properties.class))).thenReturn(producer);
         RecordHeaders recordHeaders = new RecordHeaders();
         recordHeaders.add("$http.replyTo", "readings.responses".getBytes(UTF_8));
         recordHeaders.add("$http.correlationId", "123".getBytes(UTF_8));
@@ -88,8 +82,7 @@ public class ReadingsMessageHandlerTest
         when(record.value()).thenReturn("{\"unit\":\"C\"}");
         when(producer.send(any(ProducerRecord.class))).thenReturn(future);
 
-        Properties props = new Properties();
-        ReadingsMessageHandler handler = new ReadingsMessageHandler(kafkaProducerFactory, props);
+        ReadingsMessageHandler handler = new ReadingsMessageHandler(producer);
         TemperatureUnit newTempUnit = handler.handleMessage(record);
 
         assertEquals(TemperatureUnit.C, newTempUnit);
@@ -107,12 +100,10 @@ public class ReadingsMessageHandlerTest
     @Test
     public void shouldReceiveFahrenheitRequestThenChangeUnitAndRespond() throws Exception
     {
-        final KafkaProducerFactory kafkaProducerFactory = mock(KafkaProducerFactory.class);
         final KafkaProducer<String, String> producer = mock(KafkaProducer.class);
         final ConsumerRecord<String, String> record = mock(ConsumerRecord.class);
         final Future<RecordMetadata> future = mock(Future.class);
 
-        when(kafkaProducerFactory.newKafkaProducer(any(Properties.class))).thenReturn(producer);
         RecordHeaders recordHeaders = new RecordHeaders();
         recordHeaders.add("$http.replyTo", "readings.responses".getBytes(UTF_8));
         recordHeaders.add("$http.correlationId", "123".getBytes(UTF_8));
@@ -120,8 +111,7 @@ public class ReadingsMessageHandlerTest
         when(record.value()).thenReturn("{\"unit\":\"F\"}");
         when(producer.send(any(ProducerRecord.class))).thenReturn(future);
 
-        Properties props = new Properties();
-        ReadingsMessageHandler handler = new ReadingsMessageHandler(kafkaProducerFactory, props);
+        ReadingsMessageHandler handler = new ReadingsMessageHandler(producer);
         TemperatureUnit newTempUnit = handler.handleMessage(record);
 
         assertEquals(TemperatureUnit.F, newTempUnit);
@@ -139,12 +129,10 @@ public class ReadingsMessageHandlerTest
     @Test
     public void shouldReceiveKelvinRequestAndThenChangeUnitAndRespond() throws Exception
     {
-        final KafkaProducerFactory kafkaProducerFactory = mock(KafkaProducerFactory.class);
         final KafkaProducer<String, String> producer = mock(KafkaProducer.class);
         final ConsumerRecord<String, String> record = mock(ConsumerRecord.class);
         final Future<RecordMetadata> future = mock(Future.class);
 
-        when(kafkaProducerFactory.newKafkaProducer(any(Properties.class))).thenReturn(producer);
         RecordHeaders recordHeaders = new RecordHeaders();
         recordHeaders.add("$http.replyTo", "readings.responses".getBytes(UTF_8));
         recordHeaders.add("$http.correlationId", "123".getBytes(UTF_8));
@@ -152,8 +140,7 @@ public class ReadingsMessageHandlerTest
         when(record.value()).thenReturn("{\"unit\":\"K\"}");
         when(producer.send(any(ProducerRecord.class))).thenReturn(future);
 
-        Properties props = new Properties();
-        ReadingsMessageHandler handler = new ReadingsMessageHandler(kafkaProducerFactory, props);
+        ReadingsMessageHandler handler = new ReadingsMessageHandler(producer);
         TemperatureUnit newTempUnit = handler.handleMessage(record);
 
         assertEquals(TemperatureUnit.K, newTempUnit);

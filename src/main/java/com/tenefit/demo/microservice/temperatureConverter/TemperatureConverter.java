@@ -17,6 +17,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.PartitionInfo;
@@ -224,9 +225,12 @@ public class TemperatureConverter
         consumer.assign(topicPartitions);
 
         SensorsMessageHandler sensorsMessageHandler = new SensorsMessageHandler(
-            readingsTopic, new DefaultKafkaProducerFactory(), kafkaProducerOptions);
+            new KafkaProducer<String, String>(kafkaProducerOptions),
+            readingsTopic
+            );
+
         ReadingsMessageHandler readingsMessageHandler = new ReadingsMessageHandler(
-            new DefaultKafkaProducerFactory(), kafkaProducerOptions);
+            new KafkaProducer<String, String>(kafkaProducerOptions));
 
         System.out.println("TemperatureConverter microservice listening");
 

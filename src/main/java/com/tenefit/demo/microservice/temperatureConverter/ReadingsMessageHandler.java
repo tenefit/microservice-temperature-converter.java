@@ -7,7 +7,6 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
@@ -27,10 +26,9 @@ public class ReadingsMessageHandler
     private final Gson gson;
 
     public ReadingsMessageHandler(
-        final KafkaProducerFactory kafkaProducerFactory,
-        final Properties kafkaProducerOptions)
+        final Producer<String, String> producer)
     {
-        producer = kafkaProducerFactory.newKafkaProducer(kafkaProducerOptions);
+        this.producer = producer;
 
         gson = new Gson();
     }

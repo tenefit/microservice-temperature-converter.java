@@ -14,7 +14,6 @@ import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
 import java.util.Optional;
-import java.util.Properties;
 import java.util.concurrent.Future;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -38,12 +37,10 @@ public class SensorsMessageHandlerTest
     @Test
     public void shouldReceiveSensorMessageThenPublishReading() throws Exception
     {
-        final KafkaProducerFactory kafkaProducerFactory = mock(KafkaProducerFactory.class);
         final KafkaProducer<String, String> producer = mock(KafkaProducer.class);
         final ConsumerRecord<String, String> record = mock(ConsumerRecord.class);
         final Future<RecordMetadata> future = mock(Future.class);
 
-        when(kafkaProducerFactory.newKafkaProducer(any(Properties.class))).thenReturn(producer);
         RecordHeaders recordHeaders = new RecordHeaders();
         recordHeaders.add("row", "1".getBytes(UTF_8));
         when(record.headers()).thenReturn(recordHeaders);
@@ -51,8 +48,7 @@ public class SensorsMessageHandlerTest
         when(record.value()).thenReturn("{\"id\":\"1\",\"unit\":\"C\",\"value\":0}");
         when(producer.send(any(ProducerRecord.class))).thenReturn(future);
 
-        Properties props = new Properties();
-        SensorsMessageHandler handler = new SensorsMessageHandler("readings", kafkaProducerFactory, props);
+        SensorsMessageHandler handler = new SensorsMessageHandler(producer, "readings");
         handler.handleMessage(record, TemperatureUnit.F);
 
         ArgumentCaptor<ProducerRecord<String, String>> sendArg = ArgumentCaptor.forClass(ProducerRecord.class);

@@ -5,7 +5,6 @@ package com.tenefit.demo.microservice.temperatureConverter;
 
 import java.util.Arrays;
 import java.util.Optional;
-import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -26,13 +25,11 @@ public class SensorsMessageHandler
     private final Gson gson;
 
     public SensorsMessageHandler(
-        String outboundTopic,
-        final KafkaProducerFactory kafkaProducerFactory,
-        final Properties kafkaProducerOptions)
+        final Producer<String, String> producer,
+        String outboundTopic)
     {
+        this.producer = producer;
         this.outboundTopic = outboundTopic;
-
-        producer = kafkaProducerFactory.newKafkaProducer(kafkaProducerOptions);
 
         gson = new Gson();
     }
