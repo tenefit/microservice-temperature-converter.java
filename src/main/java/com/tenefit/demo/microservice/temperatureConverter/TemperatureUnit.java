@@ -7,98 +7,98 @@ public enum TemperatureUnit
 {
     C
     {
-        public int fromCelsius(
+        public int toCelsius(
             int value)
         {
             return value;
         }
 
-        public int fromFahrenheit(
-            int value)
-        {
-            return (int)Math.round((value - 32.0) / 9.0 * 5.0);
-        }
-
-        public int fromKelvin(
-            int value)
-        {
-            return (int)Math.round(value - 273.2);
-        }
-
-        public int convertTo(
-            int value,
-            TemperatureUnit unit)
-        {
-            return unit.fromCelsius(value);
-        }
-    },
-
-    F
-    {
-        public int fromCelsius(
+        public int toFahrenheit(
             int value)
         {
             return (int)Math.round(value / 5.0 * 9.0 + 32.0);
         }
 
-        public int fromFahrenheit(
-            int value)
-        {
-            return value;
-        }
-
-        public int fromKelvin(
-            int value)
-        {
-            return (int)Math.round(value / 5.0 * 9.0 - 459.7);
-        }
-
-        public int convertTo(
-            int value,
-            TemperatureUnit unit)
-        {
-            return unit.fromFahrenheit(value);
-        }
-    },
-
-    K
-    {
-        public int fromCelsius(
+        public int toKelvin(
             int value)
         {
             return (int)Math.round(value + 273.2);
         }
 
-        public int fromFahrenheit(
+        public int canonicalize(
+            int value,
+            TemperatureUnit unit)
+        {
+            return unit.toCelsius(value);
+        }
+    },
+
+    F
+    {
+        public int toCelsius(
             int value)
         {
-            return (int)Math.round((value + 459.7) / 9.0 * 5.0);
+            return (int)Math.round((value - 32.0) / 9.0 * 5.0);
         }
 
-        public int fromKelvin(
+        public int toFahrenheit(
             int value)
         {
             return value;
         }
 
-        public int convertTo(
+        public int toKelvin(
+            int value)
+        {
+            return (int)Math.round((value + 459.7) / 9.0 * 5.0);
+        }
+
+        public int canonicalize(
             int value,
             TemperatureUnit unit)
         {
-            return unit.fromKelvin(value);
+            return unit.toFahrenheit(value);
+        }
+    },
+
+    K
+    {
+        public int toCelsius(
+            int value)
+        {
+            return (int)Math.round(value - 273.2);
+        }
+
+        public int toFahrenheit(
+            int value)
+        {
+            return (int)Math.round(value / 5.0 * 9.0 - 459.7);
+        }
+
+        public int toKelvin(
+            int value)
+        {
+            return value;
+        }
+
+        public int canonicalize(
+            int value,
+            TemperatureUnit unit)
+        {
+            return unit.toKelvin(value);
         }
     };
 
-    public abstract int fromCelsius(
+    public abstract int toCelsius(
         int value);
 
-    public abstract int fromFahrenheit(
+    public abstract int toFahrenheit(
         int value);
 
-    public abstract int fromKelvin(
+    public abstract int toKelvin(
         int value);
 
-    abstract int convertTo(
+    abstract int canonicalize(
         int value,
         TemperatureUnit unit);
 }

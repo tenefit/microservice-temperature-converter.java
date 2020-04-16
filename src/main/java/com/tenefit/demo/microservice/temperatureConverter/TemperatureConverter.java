@@ -100,7 +100,7 @@ public class TemperatureConverter
 
     private boolean isRunning = true;
 
-    private TemperatureUnit currentTempUnit;
+    private TemperatureUnit readingsUnit;
 
     public static void main(String[] args) throws InterruptedException, ExecutionException
     {
@@ -111,7 +111,7 @@ public class TemperatureConverter
 
     public TemperatureConverter() throws Exception
     {
-        currentTempUnit = TemperatureUnit.F;
+        readingsUnit = TemperatureUnit.F;
 
         kafkaConsumerOptions = new Properties();
         kafkaProducerOptions = new Properties();
@@ -249,14 +249,14 @@ public class TemperatureConverter
                 ConsumerRecord<String, String> record = recordsIterator.next();
                 if (record.topic().equals(sensorsTopic))
                 {
-                    sensorsMessageHandler.handleMessage(record, currentTempUnit);
+                    sensorsMessageHandler.handleMessage(record, readingsUnit);
                 }
                 else
                 {
-                    final TemperatureUnit newTempUnit = readingsMessageHandler.handleMessage(record);
-                    if (newTempUnit != null)
+                    final TemperatureUnit newReadingsUnit = readingsMessageHandler.handleMessage(record);
+                    if (newReadingsUnit != null)
                     {
-                        currentTempUnit = newTempUnit;
+                        readingsUnit = newReadingsUnit;
                     }
                 }
             }

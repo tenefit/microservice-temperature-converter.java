@@ -13,13 +13,16 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.Arrays;
-import java.util.List;
+import java.io.StringReader;
 import java.util.concurrent.Future;
-import java.util.stream.Collectors;
+
+import javax.json.Json;
+import javax.json.JsonObject;
+import javax.json.JsonReader;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.header.Header;
@@ -27,19 +30,13 @@ import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-
 public class ReadingsMessageHandlerTest
 {
-    private Gson gson = new Gson();
-
     @SuppressWarnings("unchecked")
     @Test
     public void shouldReceiveRequestThenRespondWithCorrectMetadata() throws Exception
     {
-        final KafkaProducer<String, String> producer = mock(KafkaProducer.class);
+        final Producer<String, String> producer = mock(KafkaProducer.class);
         final ConsumerRecord<String, String> record = mock(ConsumerRecord.class);
         final Future<RecordMetadata> future = mock(Future.class);
 
@@ -55,16 +52,16 @@ public class ReadingsMessageHandlerTest
 
         ArgumentCaptor<ProducerRecord<String, String>> sendArg = ArgumentCaptor.forClass(ProducerRecord.class);
         verify(producer).send(sendArg.capture());
-        assertEquals("readings.responses", sendArg.getValue().topic());
-        Header[] headers = sendArg.getValue().headers().toArray();
-        assertEquals(1, headers.length);
-        List<Header> correlationHeaders = Arrays.stream(headers)
-            .filter(h -> h.key().equals("$http.correlationId"))
-            .collect(Collectors.toList());
-        assertEquals(1, correlationHeaders.size());
-        System.out.format("h=%s\n", new String(correlationHeaders.get(0).value()));
-        assertArrayEquals("123".getBytes(UTF_8), correlationHeaders.get(0).value());
+
         assertNull(sendArg.getValue().key());
+
+        assertEquals("readings.responses", sendArg.getValue().topic());
+
+        assertEquals(1, sendArg.getValue().headers().toArray().length);
+
+        Header correlationId = sendArg.getValue().headers().lastHeader("$http.correlationId");
+        assertNotNull("missing correlationId header", correlationId);
+        assertArrayEquals("123".getBytes(UTF_8), correlationId.value());
     }
 
     @SuppressWarnings("unchecked")
@@ -89,11 +86,15 @@ public class ReadingsMessageHandlerTest
 
         ArgumentCaptor<ProducerRecord<String, String>> sendArg = ArgumentCaptor.forClass(ProducerRecord.class);
         verify(producer).send(sendArg.capture());
-        JsonObject messageAsJson = gson.fromJson(sendArg.getValue().value(), JsonObject.class);
-        assertEquals(1, messageAsJson.keySet().size());
-        JsonElement unitAsJson = messageAsJson.get("unit");
-        assertNotNull(unitAsJson);
-        assertEquals("C", unitAsJson.getAsString());
+        try (JsonReader outputJson = Json.createReader(new StringReader(sendArg.getValue().value())))
+        {
+            JsonObject output = outputJson.readObject();
+            assertEquals(1, output.size());
+
+            String unit = output.getString("unit");
+            assertNotNull(unit);
+            assertEquals("C", unit);
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -118,11 +119,15 @@ public class ReadingsMessageHandlerTest
 
         ArgumentCaptor<ProducerRecord<String, String>> sendArg = ArgumentCaptor.forClass(ProducerRecord.class);
         verify(producer).send(sendArg.capture());
-        JsonObject messageAsJson = gson.fromJson(sendArg.getValue().value(), JsonObject.class);
-        assertEquals(1, messageAsJson.keySet().size());
-        JsonElement unitAsJson = messageAsJson.get("unit");
-        assertNotNull(unitAsJson);
-        assertEquals("F", unitAsJson.getAsString());
+        try (JsonReader outputJson = Json.createReader(new StringReader(sendArg.getValue().value())))
+        {
+            JsonObject output = outputJson.readObject();
+            assertEquals(1, output.size());
+
+            String unit = output.getString("unit");
+            assertNotNull(unit);
+            assertEquals("F", unit);
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -147,10 +152,14 @@ public class ReadingsMessageHandlerTest
 
         ArgumentCaptor<ProducerRecord<String, String>> sendArg = ArgumentCaptor.forClass(ProducerRecord.class);
         verify(producer).send(sendArg.capture());
-        JsonObject messageAsJson = gson.fromJson(sendArg.getValue().value(), JsonObject.class);
-        assertEquals(1, messageAsJson.keySet().size());
-        JsonElement unitAsJson = messageAsJson.get("unit");
-        assertNotNull(unitAsJson);
-        assertEquals("K", unitAsJson.getAsString());
+        try (JsonReader outputJson = Json.createReader(new StringReader(sendArg.getValue().value())))
+        {
+            JsonObject output = outputJson.readObject();
+            assertEquals(1, output.size());
+
+            String unit = output.getString("unit");
+            assertNotNull(unit);
+            assertEquals("K", unit);
+        }
     }
 }

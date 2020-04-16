@@ -4,17 +4,20 @@
 package com.tenefit.demo.microservice.temperatureConverter;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.Arrays;
-import java.util.Optional;
+import java.io.StringReader;
 import java.util.concurrent.Future;
+
+import javax.json.Json;
+import javax.json.JsonObject;
+import javax.json.JsonReader;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -25,14 +28,8 @@ import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-
 public class SensorsMessageHandlerTest
 {
-    private Gson gson = new Gson();
-
     @SuppressWarnings("unchecked")
     @Test
     public void shouldReceiveSensorMessageThenPublishReading() throws Exception
@@ -42,10 +39,10 @@ public class SensorsMessageHandlerTest
         final Future<RecordMetadata> future = mock(Future.class);
 
         RecordHeaders recordHeaders = new RecordHeaders();
-        recordHeaders.add("row", "1".getBytes(UTF_8));
+        recordHeaders.add("row", "9".getBytes(UTF_8));
         when(record.headers()).thenReturn(recordHeaders);
-        when(record.key()).thenReturn("1");
-        when(record.value()).thenReturn("{\"id\":\"1\",\"unit\":\"C\",\"value\":0}");
+        when(record.key()).thenReturn("4");
+        when(record.value()).thenReturn("{\"id\":\"4\",\"unit\":\"C\",\"value\":0}");
         when(producer.send(any(ProducerRecord.class))).thenReturn(future);
 
         SensorsMessageHandler handler = new SensorsMessageHandler(producer, "readings");
@@ -53,24 +50,32 @@ public class SensorsMessageHandlerTest
 
         ArgumentCaptor<ProducerRecord<String, String>> sendArg = ArgumentCaptor.forClass(ProducerRecord.class);
         verify(producer).send(sendArg.capture());
+
+        assertEquals("4", sendArg.getValue().key());
+
         assertEquals("readings", sendArg.getValue().topic());
-        assertEquals("1", sendArg.getValue().key());
-        JsonObject messageAsJson = gson.fromJson(sendArg.getValue().value(), JsonObject.class);
-        assertEquals(3, messageAsJson.keySet().size());
-        JsonElement idAsJson = messageAsJson.get("id");
-        assertNotNull(idAsJson);
-        assertEquals("1", idAsJson.getAsString());
-        JsonElement unitAsJson = messageAsJson.get("unit");
-        assertNotNull(unitAsJson);
-        assertEquals("F", unitAsJson.getAsString());
-        JsonElement valueAsJson = messageAsJson.get("value");
-        assertNotNull(valueAsJson);
-        assertEquals(32, valueAsJson.getAsInt());
-        Header[] headers = sendArg.getValue().headers().toArray();
-        assertEquals(1, headers.length);
-        Optional<Header> rowHeader = Arrays.stream(headers).filter(h -> h.key().equals("row")).findFirst();
-        assertTrue("missing row header", rowHeader.isPresent());
-        String row = new String(rowHeader.get().value());
-        assertEquals("1", row);
+
+        assertEquals(1, sendArg.getValue().headers().toArray().length);
+
+        Header row = sendArg.getValue().headers().lastHeader("row");
+        assertNotNull("missing row header", row);
+        assertArrayEquals("9".getBytes(UTF_8), row.value());
+
+        try (JsonReader outputJson = Json.createReader(new StringReader(sendArg.getValue().value())))
+        {
+            JsonObject output = outputJson.readObject();
+            assertEquals(3, output.size());
+
+            String id = output.getString("id");
+            assertNotNull(id);
+            assertEquals("4", id);
+
+            String unit = output.getString("unit");
+            assertNotNull(unit);
+            assertEquals("F", unit);
+
+            int value = output.getInt("value", Integer.MAX_VALUE);
+            assertEquals(32, value);
+        }
     }
 }

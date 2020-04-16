@@ -12,54 +12,54 @@ public class TemperatureUnitTest
     @Test
     public void shouldConvertCelsiusToCelsius() throws Exception
     {
-        assertEquals(0, TemperatureUnit.C.convertTo(0, TemperatureUnit.C));
+        assertEquals(0, TemperatureUnit.C.canonicalize(0, TemperatureUnit.C));
     }
 
     @Test
     public void shouldConvertCelsiusToFahrenheit() throws Exception
     {
-        assertEquals(32, TemperatureUnit.C.convertTo(0, TemperatureUnit.F));
+        assertEquals(32, TemperatureUnit.F.canonicalize(0, TemperatureUnit.C));
     }
 
     @Test
     public void shouldConvertCelsiusToKelvin() throws Exception
     {
-        assertEquals(273, TemperatureUnit.C.convertTo(0, TemperatureUnit.K));
+        assertEquals(273, TemperatureUnit.K.canonicalize(0, TemperatureUnit.C));
     }
 
     @Test
     public void shouldConvertFahrenheitToCelsius() throws Exception
     {
-        assertEquals(-18, TemperatureUnit.F.convertTo(0, TemperatureUnit.C));
+        assertEquals(-18, TemperatureUnit.C.canonicalize(0, TemperatureUnit.F));
     }
 
     @Test
     public void shouldConvertFahrenheitToFahrenheit() throws Exception
     {
-        assertEquals(0, TemperatureUnit.F.convertTo(0, TemperatureUnit.F));
+        assertEquals(0, TemperatureUnit.F.canonicalize(0, TemperatureUnit.F));
     }
 
     @Test
     public void shouldConvertFahrenheitToKelvin() throws Exception
     {
-        assertEquals(255, TemperatureUnit.F.convertTo(0, TemperatureUnit.K));
+        assertEquals(255, TemperatureUnit.K.canonicalize(0, TemperatureUnit.F));
     }
 
     @Test
     public void shouldConvertKelvinToCelsius() throws Exception
     {
-        assertEquals(-273, TemperatureUnit.K.convertTo(0, TemperatureUnit.C));
+        assertEquals(-273, TemperatureUnit.C.canonicalize(0, TemperatureUnit.K));
     }
 
     @Test
     public void shouldConvertKelvinToFahrenheit() throws Exception
     {
-        assertEquals(-460, TemperatureUnit.K.convertTo(0, TemperatureUnit.F));
+        assertEquals(-460, TemperatureUnit.F.canonicalize(0, TemperatureUnit.K));
     }
 
     @Test
     public void shouldConvertKelvinToKelvin() throws Exception
     {
-        assertEquals(0, TemperatureUnit.K.convertTo(0, TemperatureUnit.K));
+        assertEquals(0, TemperatureUnit.K.canonicalize(0, TemperatureUnit.K));
     }
 }
