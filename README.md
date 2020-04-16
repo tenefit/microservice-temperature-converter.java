@@ -8,35 +8,35 @@ The service also subscribes to a command topic to remote control the service and
 
 The microservice receives sensor readings in order to convert the temperatures and re-publish them (see [Publishing converted sensor readings](publishing-converted-sensor-readings#))
 
-- **topic:** `sensors` (specified with `--sensors-topic`)
+- **topic:** `sensors` (specified with `--input-topic`)
 - **headers:**
   | name | value |
   | ---- | ----: |
   | row | 9 |
 - **payload:**
   ```json
-  { "id": "4", "unit": "C", "value": "100" }
+  { "id": "4", "unit": "C", "value": 100 }
   ```
 
 ### Publishing converted sensor readings
 
 After receiving sensor readings (see [Receiving original sensor readings](#receiving-original-sensor-readings)), the temperature is converted to the target temperature unit and re-published.
 
-- **topic:** `readings` (specified with `--readings-topic`)
+- **topic:** `readings` (specified with `--output-topic`)
 - **headers:**
   | name | value |
   | ---- | ----: |
   | row | 9 |
 - **payload:**
   ```json
-  { "id": "4", "unit": "F", "value": "212" }
+  { "id": "4", "unit": "F", "value": 212 }
   ```
 
 ### Receiving control messages
 
-The microservice can be controlled to changed the target temperature unit. Upon receiving a control message the microservice will change its behavior accordingly, and send a response as a confirmation. The response topic used will be that from the `$http.replyTo` header, and will the response message will include a `$http.correlationId` header with the same value as that received.
+The microservice can be controlled to changed the target temperature unit. Upon receiving a control message the microservice will change its behavior accordingly, and send a response as a confirmation. The response topic used will be that from the `$http.replyTo` header, and the response message will include a `$http.correlationId` header with the same value as that received.
 
-- **topic:** `readings.requests` (specified with `--readings-requests-topic`)
+- **topic:** `readings.requests` (specified with `--requests-topic`)
 - **headers:**
   | name | value |
   | ---- | ----: |
@@ -58,10 +58,9 @@ $ mvn clean install
 ```
 $ java -jar target/microservice-temperature-converter-develop-SNAPSHOT.jar \
   -b kafka.tenefit.cloud:9092 \
-  --sensors-topic sensors \
-  --readings-topic readings \
-  --readings-requests-topic readings.requests \
-  --readings-responses-topic readings.responses
+  --input-topic sensors \
+  --output-topic readings \
+  --requests-topic readings.requests
 ```
 
 Additional Kafka consumer and producer properties can be specified if needed:
@@ -69,10 +68,9 @@ Additional Kafka consumer and producer properties can be specified if needed:
 ```
 $ java -jar target/microservice-temperature-converter-develop-SNAPSHOT.jar \
   -b kafka.tenefit.cloud:9092 \
-  --sensors-topic sensors \
-  --readings-topic readings \
-  --readings-requests-topic readings.requests \
-  --readings-responses-topic readings.responses \
+  --input-topic sensors \
+  --output-topic readings \
+  --requests-topic readings.requests \
   --kafka-consumer-property session.timeout.ms=5000 \
   --kafka-consumer-property ... \
   --kafka-producer-property batch.size=16384 \

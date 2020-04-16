@@ -34,10 +34,10 @@ public class ReadingsMessageHandler
         Header correlationId = input.headers().lastHeader("$http.correlationId");
         try (JsonReader inputJson = Json.createReader(new StringReader(input.value())))
         {
-            JsonObject inputReading = inputJson.readObject();
-            if (replyTo != null && correlationId != null && inputReading.containsKey("unit"))
+            JsonObject request = inputJson.readObject();
+            if (replyTo != null && correlationId != null && request.containsKey("unit"))
             {
-                final TemperatureUnit unit = TemperatureUnit.valueOf(inputReading.getString("unit"));
+                final TemperatureUnit unit = TemperatureUnit.valueOf(request.getString("unit"));
 
                 String outputTopic = new String(replyTo.value(), UTF_8);
                 String response = Json.createObjectBuilder()
@@ -45,7 +45,7 @@ public class ReadingsMessageHandler
                     .build()
                     .toString();
 
-                final ProducerRecord<String, String> output = new ProducerRecord<>(outputTopic, null, response);
+                ProducerRecord<String, String> output = new ProducerRecord<>(outputTopic, null, response);
                 output.headers().add(correlationId);
                 producer.send(output).get();
                 return unit;

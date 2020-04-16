@@ -5,7 +5,6 @@ package com.tenefit.demo.microservice.temperatureConverter;
 
 import java.time.Duration;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
@@ -53,54 +52,50 @@ public class TemperatureConverter
     private String kafkaAddress;
 
     @Option(
-        name = { "--sensors-topic" },
+        name = { "--input-topic" },
         description = "Input topic with raw sensor readings")
     @Required
     @Once
     @NotBlank
     @NotEmpty
-    private String sensorsTopic;
+    private String inputTopic;
 
     @Option(
-        name = { "--readings-topic" },
+        name = { "--output-topic" },
         description = "Output topic for converted readings")
     @Required
     @Once
     @NotBlank
     @NotEmpty
-    private String readingsTopic;
+    private String outputTopic;
 
     @Option(
-        name = { "--readings-requests-topic" },
+        name = { "--requests-topic" },
         description = "Input topic for microservice command requests")
     @Required
     @Once
     @NotBlank
     @NotEmpty
-    private String readingsRequestsTopic;
+    private String requestsTopic;
 
     @Option(
-        name = "--kafka-consumer-property",
+        name = "--consumer-property",
         description = "Kafka consumer property. May be repeated. Format: <key>=<value>. e.g. session.timeout.ms=5000")
     @NotBlank
     @NotEmpty
-    private List<String> kafkaConsumerPropertiesArgs;
+    private List<String> consumerPropertiesArgs;
 
     @Option(
-        name = "--kafka-producer-property",
+        name = "--producer-property",
         description = "Kafka producer property. May be repeated. Format: <key>=<value>. e.g. batch.size=16384")
     @NotBlank
     @NotEmpty
-    private List<String> kafkaProducerPropertiesArgs;
+    private List<String> producerPropertiesArgs;
 
-    private final Properties kafkaConsumerOptions;
-    private final Properties kafkaProducerOptions;
+    private final Properties consumerOptions;
+    private final Properties producerOptions;
 
-    private KafkaConsumer<String, String> consumer;
-
-    private boolean isRunning = true;
-
-    private TemperatureUnit readingsUnit;
+    private volatile boolean isRunning = true;
 
     public static void main(String[] args) throws InterruptedException, ExecutionException
     {
@@ -111,10 +106,8 @@ public class TemperatureConverter
 
     public TemperatureConverter() throws Exception
     {
-        readingsUnit = TemperatureUnit.F;
-
-        kafkaConsumerOptions = new Properties();
-        kafkaProducerOptions = new Properties();
+        consumerOptions = new Properties();
+        producerOptions = new Properties();
     }
 
     public void start() throws InterruptedException, ExecutionException
@@ -132,9 +125,9 @@ public class TemperatureConverter
                 {
                     myThread.join();
                 }
-                catch (InterruptedException e)
+                catch (InterruptedException ex)
                 {
-                    e.printStackTrace();
+                    ex.printStackTrace();
                 }
             }
         });
@@ -143,22 +136,18 @@ public class TemperatureConverter
         {
             startListening();
         }
-        catch (KafkaException e)
+        catch (InterruptException ex)
         {
-            if (e instanceof InterruptException)
+            // User pressed Ctrl-C while Kafka library was blocking. Do nothing.
+        }
+        catch (KafkaException ex)
+        {
+            // Most likely an invalid Kafka address.
+            System.out.format("ERROR: %s\n", ex);
+            if (ex.getCause() != null)
             {
-                // User pressed Ctrl-C while Kafka library was blocking. Do nothing.
+                System.out.format("Cause: %s\n", ex.getCause().getMessage());
             }
-            else
-            {
-                // Most likely an invalid Kafka address.
-                System.out.format("ERROR: %s\n", e);
-                if (e.getCause() != null)
-                {
-                    System.out.format("Cause: %s\n", e.getCause().getMessage());
-                }
-            }
-            return;
         }
 
     }
@@ -170,93 +159,89 @@ public class TemperatureConverter
             return;
         }
 
-        kafkaConsumerOptions.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaAddress);
-        kafkaConsumerOptions.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        kafkaConsumerOptions.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        consumerOptions.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaAddress);
+        consumerOptions.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        consumerOptions.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
 
-        kafkaProducerOptions.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaAddress);
-        kafkaProducerOptions.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        kafkaProducerOptions.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        producerOptions.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaAddress);
+        producerOptions.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        producerOptions.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
 
-        if (kafkaConsumerPropertiesArgs != null)
+        if (consumerPropertiesArgs != null)
         {
-            kafkaConsumerPropertiesArgs.forEach(this::parseKafkaConsumerProperty);
+            consumerPropertiesArgs.forEach(this::parseKafkaConsumerProperty);
         }
-        if (kafkaProducerPropertiesArgs != null)
+        if (producerPropertiesArgs != null)
         {
-            kafkaProducerPropertiesArgs.forEach(this::parseKafkaProducerProperty);
+            producerPropertiesArgs.forEach(this::parseKafkaProducerProperty);
         }
     }
 
-    private void parseKafkaConsumerProperty(String arg)
+    private void parseKafkaConsumerProperty(
+        String arg)
     {
         String[] pair = arg.split("=");
-        kafkaConsumerOptions.put(pair[0], pair[1]);
+        consumerOptions.put(pair[0], pair[1]);
     }
 
-    private void parseKafkaProducerProperty(String arg)
+    private void parseKafkaProducerProperty(
+        String arg)
     {
         String[] pair = arg.split("=");
-        kafkaProducerOptions.put(pair[0], pair[1]);
+        producerOptions.put(pair[0], pair[1]);
     }
 
     private void startListening() throws InterruptedException, ExecutionException
     {
-        this.consumer = new KafkaConsumer<>(kafkaConsumerOptions);
-
-        List<PartitionInfo> sensorsPartitions = consumer.partitionsFor(sensorsTopic);
-        if (sensorsPartitions == null)
+        try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(consumerOptions))
         {
-            System.err.format("ERROR: The topic [%s] does not exist\n", sensorsTopic);
-            return;
-        }
-
-        List<PartitionInfo> readingsRequestsPartitions = consumer.partitionsFor(readingsRequestsTopic);
-        if (readingsRequestsPartitions == null)
-        {
-            System.err.format("ERROR: The topic [%s] does not exist\n", readingsRequestsTopic);
-            return;
-        }
-
-        final Set<TopicPartition> topicPartitions = new HashSet<>();
-        sensorsPartitions.forEach(p -> topicPartitions.add(new TopicPartition(p.topic(), p.partition())));
-        readingsRequestsPartitions.forEach(p -> topicPartitions.add(new TopicPartition(p.topic(), p.partition())));
-
-        consumer.assign(topicPartitions);
-
-        SensorsMessageHandler sensorsMessageHandler = new SensorsMessageHandler(
-            new KafkaProducer<String, String>(kafkaProducerOptions),
-            readingsTopic
-            );
-
-        ReadingsMessageHandler readingsMessageHandler = new ReadingsMessageHandler(
-            new KafkaProducer<String, String>(kafkaProducerOptions));
-
-        System.out.println("TemperatureConverter microservice listening");
-
-        while (isRunning)
-        {
-            ConsumerRecords<String, String> records = consumer.poll(kafkaPollTimeout);
-
-            if (records.isEmpty())
+            List<PartitionInfo> sensorsPartitions = consumer.partitionsFor(inputTopic);
+            if (sensorsPartitions == null)
             {
-                continue;
+                System.err.format("ERROR: The topic [%s] does not exist\n", inputTopic);
+                return;
             }
 
-            Iterator<ConsumerRecord<String, String>> recordsIterator = records.iterator();
-            while (recordsIterator.hasNext())
+            List<PartitionInfo> readingsRequestsPartitions = consumer.partitionsFor(requestsTopic);
+            if (readingsRequestsPartitions == null)
             {
-                ConsumerRecord<String, String> record = recordsIterator.next();
-                if (record.topic().equals(sensorsTopic))
+                System.err.format("ERROR: The topic [%s] does not exist\n", requestsTopic);
+                return;
+            }
+
+            final Set<TopicPartition> topicPartitions = new HashSet<>();
+            sensorsPartitions.forEach(p -> topicPartitions.add(new TopicPartition(p.topic(), p.partition())));
+            readingsRequestsPartitions.forEach(p -> topicPartitions.add(new TopicPartition(p.topic(), p.partition())));
+
+            consumer.assign(topicPartitions);
+
+            SensorsMessageHandler sensorsMessageHandler = new SensorsMessageHandler(
+                new KafkaProducer<String, String>(producerOptions),
+                outputTopic);
+
+            ReadingsMessageHandler readingsMessageHandler = new ReadingsMessageHandler(
+                new KafkaProducer<String, String>(producerOptions));
+
+            TemperatureUnit readingsUnit = TemperatureUnit.F;
+
+            System.out.println("TemperatureConverter microservice listening");
+
+            while (isRunning)
+            {
+                ConsumerRecords<String, String> records = consumer.poll(kafkaPollTimeout);
+                for (ConsumerRecord<String, String> record: records)
                 {
-                    sensorsMessageHandler.handleMessage(record, readingsUnit);
-                }
-                else
-                {
-                    final TemperatureUnit newReadingsUnit = readingsMessageHandler.handleMessage(record);
-                    if (newReadingsUnit != null)
+                    if (record.topic().equals(inputTopic))
                     {
-                        readingsUnit = newReadingsUnit;
+                        sensorsMessageHandler.handleMessage(record, readingsUnit);
+                    }
+                    else
+                    {
+                        final TemperatureUnit newReadingsUnit = readingsMessageHandler.handleMessage(record);
+                        if (newReadingsUnit != null)
+                        {
+                            readingsUnit = newReadingsUnit;
+                        }
                     }
                 }
             }

@@ -68,7 +68,7 @@ public class ReadingsMessageHandlerTest
     @Test
     public void shouldReceiveCelsiusRequestThenChangeUnitAndRespond() throws Exception
     {
-        final KafkaProducer<String, String> producer = mock(KafkaProducer.class);
+        final Producer<String, String> producer = mock(KafkaProducer.class);
         final ConsumerRecord<String, String> record = mock(ConsumerRecord.class);
         final Future<RecordMetadata> future = mock(Future.class);
 
@@ -101,7 +101,7 @@ public class ReadingsMessageHandlerTest
     @Test
     public void shouldReceiveFahrenheitRequestThenChangeUnitAndRespond() throws Exception
     {
-        final KafkaProducer<String, String> producer = mock(KafkaProducer.class);
+        final Producer<String, String> producer = mock(KafkaProducer.class);
         final ConsumerRecord<String, String> record = mock(ConsumerRecord.class);
         final Future<RecordMetadata> future = mock(Future.class);
 
@@ -134,7 +134,7 @@ public class ReadingsMessageHandlerTest
     @Test
     public void shouldReceiveKelvinRequestAndThenChangeUnitAndRespond() throws Exception
     {
-        final KafkaProducer<String, String> producer = mock(KafkaProducer.class);
+        final Producer<String, String> producer = mock(KafkaProducer.class);
         final ConsumerRecord<String, String> record = mock(ConsumerRecord.class);
         final Future<RecordMetadata> future = mock(Future.class);
 
