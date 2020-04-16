@@ -4,10 +4,9 @@
 package com.tenefit.demo.microservice.temperatureConverter;
 
 import java.time.Duration;
-import java.util.HashSet;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
-import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
 import javax.inject.Inject;
@@ -19,8 +18,6 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.KafkaException;
-import org.apache.kafka.common.PartitionInfo;
-import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.InterruptException;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -37,6 +34,8 @@ import com.github.rvesse.airline.annotations.restrictions.Required;
 @Command(name = "temperature-converter", description = "Microservice for converting temperatures")
 public class TemperatureConverter
 {
+    private final String defaultGroupId = "temperature-converter";
+
     private final Duration kafkaPollTimeout = Duration.ofSeconds(1000);
 
     @Inject
@@ -193,27 +192,13 @@ public class TemperatureConverter
 
     private void startListening() throws InterruptedException, ExecutionException
     {
+        if (!consumerOptions.containsKey("group.id"))
+        {
+            consumerOptions.put("group.id", defaultGroupId);
+        }
         try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(consumerOptions))
         {
-            List<PartitionInfo> sensorsPartitions = consumer.partitionsFor(inputTopic);
-            if (sensorsPartitions == null)
-            {
-                System.err.format("ERROR: The topic [%s] does not exist\n", inputTopic);
-                return;
-            }
-
-            List<PartitionInfo> readingsRequestsPartitions = consumer.partitionsFor(requestsTopic);
-            if (readingsRequestsPartitions == null)
-            {
-                System.err.format("ERROR: The topic [%s] does not exist\n", requestsTopic);
-                return;
-            }
-
-            final Set<TopicPartition> topicPartitions = new HashSet<>();
-            sensorsPartitions.forEach(p -> topicPartitions.add(new TopicPartition(p.topic(), p.partition())));
-            readingsRequestsPartitions.forEach(p -> topicPartitions.add(new TopicPartition(p.topic(), p.partition())));
-
-            consumer.assign(topicPartitions);
+            consumer.subscribe(Arrays.asList(inputTopic, requestsTopic));
 
             SensorsMessageHandler sensorsMessageHandler = new SensorsMessageHandler(
                 new KafkaProducer<String, String>(producerOptions),
