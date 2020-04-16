@@ -106,6 +106,8 @@ public class TemperatureConverter
     public TemperatureConverter() throws Exception
     {
         consumerOptions = new Properties();
+        consumerOptions.put("group.id", defaultGroupId);
+
         producerOptions = new Properties();
     }
 
@@ -192,10 +194,6 @@ public class TemperatureConverter
 
     private void startListening() throws InterruptedException, ExecutionException
     {
-        if (!consumerOptions.containsKey("group.id"))
-        {
-            consumerOptions.put("group.id", defaultGroupId);
-        }
         try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(consumerOptions))
         {
             consumer.subscribe(Arrays.asList(inputTopic, requestsTopic));

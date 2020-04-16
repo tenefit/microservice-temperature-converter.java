@@ -37,7 +37,7 @@ public class ReadingsMessageHandler
             JsonObject request = inputJson.readObject();
             if (replyTo != null && correlationId != null && request.containsKey("unit"))
             {
-                final TemperatureUnit unit = TemperatureUnit.valueOf(request.getString("unit"));
+                TemperatureUnit unit = TemperatureUnit.valueOf(request.getString("unit"));
 
                 String outputTopic = new String(replyTo.value(), UTF_8);
                 String response = Json.createObjectBuilder()
