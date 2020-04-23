@@ -82,7 +82,7 @@ public class SensorsMessageHandlerTest
 
     @SuppressWarnings("unchecked")
     @Test
-    public void shouldSkipMessageWithNonJsonPayload() throws Exception
+    public void shouldSkipSensorMessageWithNonJsonPayload() throws Exception
     {
         final KafkaProducer<String, String> producer = mock(KafkaProducer.class);
         final ConsumerRecord<String, String> record = mock(ConsumerRecord.class);
