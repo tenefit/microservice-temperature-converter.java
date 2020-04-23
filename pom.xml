@@ -6,7 +6,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.tenefit</groupId>
   <artifactId>microservice-temperature-converter</artifactId>
-  <version>develop-SNAPSHOT</version>
+  <version>0.2</version>
   <name>Temperature Converter Microservice</name>
   <description>Temperature Converter Microservice</description>
   <url>https://github.com/tenefit/microservice-temperature-converter.java</url>
