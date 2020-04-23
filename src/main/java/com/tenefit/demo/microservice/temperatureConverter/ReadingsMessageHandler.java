@@ -11,6 +11,7 @@ import java.util.concurrent.ExecutionException;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
+import javax.json.stream.JsonParsingException;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.Producer;
@@ -50,6 +51,10 @@ public class ReadingsMessageHandler
                 producer.send(output).get();
                 return unit;
             }
+        }
+        catch (JsonParsingException ex)
+        {
+            // The payload on the input message was not valid JSON, so skip it
         }
         return null;
     }
