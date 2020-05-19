@@ -4,6 +4,61 @@ A microservice that receives temperature readings from a Kafka topic, converts t
 
 The service also subscribes to a command topic to remote control the service and designate the target temperature unit (**C**elsius, **F**ahrenheit, or **K**elvin).
 
+## Prerequisites
+
+- Java 1.8 or higher
+
+- A Kafka broker or Kafka broker cluster that the microservice can connect to, with the following topics pre-created:
+
+  | topic                | cleanup.policy                |
+  | -------------------- | ----------------------------- |
+  | `sensors`            | `compact` or `compact,delete` |
+  | `readings`           | `compact` or `compact,delete` |
+  | `readings.requests`  | `delete`                      |
+  | `readings.responses` | `delete`                      |
+  | `state`              | `compact` or `compact,delete` |
+  | `control`            | `delete`                      |
+
+  Note that the `sensors`, `readings`, and `state` topics are log compacted.
+
+## Build
+
+```
+$ ./mvnw clean install
+```
+
+## Run
+
+The microservice will connect to your Kafka to publish and subscribe. To start the microservice, run the following command.
+
+```
+$ java -jar target/microservice-temperature-converter-develop-SNAPSHOT.jar \
+    -b kafka.example.com:9092 \
+    --input-topic sensors \
+    --output-topic readings \
+    --requests-topic readings.requests
+```
+
+Note that you don't need to specify the `readings.responses` topic here. That reply-to topic will be included as a header on inbound control messages.
+
+Additional Kafka consumer and producer properties can be specified if needed:
+
+```
+$ java -jar target/microservice-temperature-converter-develop-SNAPSHOT.jar \
+    -b kafka.example.com:9092 \
+    --input-topic sensors \
+    --output-topic readings \
+    --requests-topic readings.requests \
+    --kafka-consumer-property session.timeout.ms=5000 \
+    --kafka-consumer-property ... \
+    --kafka-producer-property batch.size=16384 \
+    --kafka-producer-property ...
+```
+
+## Topic details
+
+This section describes the Kafka topic usage of the microservice.
+
 ### Receiving original sensor readings
 
 The microservice receives sensor readings in order to convert the temperatures and re-publish them (see [Publishing converted sensor readings](publishing-converted-sensor-readings#))
@@ -46,33 +101,3 @@ The microservice can be controlled to changed the target temperature unit. Upon 
   ```json
   { "unit": "F" }
   ```
-
-## Build
-
-```
-$ mvn clean install
-```
-
-## Run
-
-```
-$ java -jar target/microservice-temperature-converter-develop-SNAPSHOT.jar \
-  -b kafka.tenefit.cloud:9092 \
-  --input-topic sensors \
-  --output-topic readings \
-  --requests-topic readings.requests
-```
-
-Additional Kafka consumer and producer properties can be specified if needed:
-
-```
-$ java -jar target/microservice-temperature-converter-develop-SNAPSHOT.jar \
-  -b kafka.tenefit.cloud:9092 \
-  --input-topic sensors \
-  --output-topic readings \
-  --requests-topic readings.requests \
-  --kafka-consumer-property session.timeout.ms=5000 \
-  --kafka-consumer-property ... \
-  --kafka-producer-property batch.size=16384 \
-  --kafka-producer-property ...
-```

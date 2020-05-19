@@ -6,7 +6,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.tenefit</groupId>
   <artifactId>microservice-temperature-converter</artifactId>
-  <version>0.2</version>
+  <version>0.3</version>
   <name>Temperature Converter Microservice</name>
   <description>Temperature Converter Microservice</description>
   <url>https://github.com/tenefit/microservice-temperature-converter.java</url>
@@ -33,8 +33,8 @@
 
   <repositories>
     <repository>
-      <id>kaazing.private</id>
-      <url>https://repository.kaazing.us/repository/mvn-private-releases/</url>
+      <id>maven.tenefit.com</id>
+      <url>https://maven.pkg.github.com/tenefit/packages/</url>
     </repository>
   </repositories>
 
@@ -144,7 +144,6 @@
         <version>0.8.2</version>
         <configuration>
           <excludes>
-            <exclude>com/kaazing/specification/kafka_sse/internal/types/**/*.class</exclude>
           </excludes>
           <rules>
             <rule>
@@ -232,14 +231,14 @@
       <id>release</id>
 
       <distributionManagement>
-        <downloadUrl>https://repository.kaazing.us/repository/maven-private/</downloadUrl>
+        <downloadUrl>https://maven.pkg.github.com/tenefit/microservice-temperature-converter.java/</downloadUrl>
         <repository>
-          <id>kaazing.private</id>
-          <url>https://repository.kaazing.us/repository/mvn-private-releases/</url>
+          <id>maven.tenefit.com</id>
+          <url>https://maven.pkg.github.com/tenefit/microservice-temperature-converter.java/</url>
         </repository>
         <snapshotRepository>
-          <id>kaazing.private</id>
-          <url>https://repository.kaazing.us/repository/mvn-private-snapshots/</url>
+          <id>maven.tenefit.com</id>
+          <url>https://maven.pkg.github.com/tenefit/microservice-temperature-converter.java/</url>
         </snapshotRepository>
       </distributionManagement>
 
