@@ -55,6 +55,22 @@ $ java -jar target/microservice-temperature-converter-develop-SNAPSHOT.jar \
     --kafka-producer-property ...
 ```
 
+### TLS
+
+For Kafka brokers using TLS:
+
+```
+$ java -jar target/microservice-temperature-converter-develop-SNAPSHOT.jar \
+    -b kafka.example.com:9092 \
+    --input-topic sensors \
+    --output-topic readings \
+    --requests-topic readings.requests \
+    --consumer-property security.protocol=SSL \
+    --consumer-property ssl.endpoint.identification.algorithm= \
+    --producer-property security.protocol=SSL \
+    --producer-property ssl.endpoint.identification.algorithm=
+```
+
 ## Topic details
 
 This section describes the Kafka topic usage of the microservice.

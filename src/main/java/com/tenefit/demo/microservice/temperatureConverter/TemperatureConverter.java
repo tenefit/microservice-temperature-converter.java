@@ -182,14 +182,14 @@ public class TemperatureConverter
         String arg)
     {
         String[] pair = arg.split("=");
-        consumerOptions.put(pair[0], pair[1]);
+        consumerOptions.put(pair[0], pair.length == 2 ? pair[1] : "");
     }
 
     private void parseKafkaProducerProperty(
         String arg)
     {
         String[] pair = arg.split("=");
-        producerOptions.put(pair[0], pair[1]);
+        producerOptions.put(pair[0], pair.length == 2 ? pair[1] : "");
     }
 
     private void startListening() throws InterruptedException, ExecutionException
