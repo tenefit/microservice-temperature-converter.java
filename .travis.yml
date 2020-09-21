@@ -3,7 +3,7 @@ language: java
 before_install:
 - rm ~/.m2/settings.xml
 jdk:
-- openjdk11
+- openjdk8
 install: ./mvnw -s "${TRAVIS_BUILD_DIR}/.travis/maven-settings.xml" -v
 script: ./mvnw -s "${TRAVIS_BUILD_DIR}/.travis/maven-settings.xml" -B -nsu verify
 cache:
