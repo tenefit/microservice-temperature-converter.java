@@ -61,7 +61,7 @@ For Kafka brokers using TLS:
 
 ```
 $ java -jar target/microservice-temperature-converter-develop-SNAPSHOT.jar \
-    -b kafka.example.com:9092 \
+    -b kafka.example.com:9093 \
     --input-topic sensors \
     --output-topic readings \
     --requests-topic readings.requests \
