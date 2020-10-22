@@ -3,6 +3,8 @@
  */
 package com.tenefit.demo.microservice.temperatureConverter;
 
+import static java.lang.System.currentTimeMillis;
+
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
@@ -34,7 +36,7 @@ import com.github.rvesse.airline.annotations.restrictions.Required;
 @Command(name = "temperature-converter", description = "Microservice for converting temperatures")
 public class TemperatureConverter
 {
-    private final String defaultGroupId = "temperature-converter";
+    private final String defaultGroupId = String.format("temperature-converter-%x", currentTimeMillis());
 
     private final Duration kafkaPollTimeout = Duration.ofSeconds(1000);
 
