@@ -27,7 +27,7 @@
     <jacoco.coverage.ratio>0.3</jacoco.coverage.ratio>
     <jacoco.missed.count>4</jacoco.missed.count>
 
-    <junit.version>4.13</junit.version>
+    <junit.version>4.13.1</junit.version>
     <mockito.version>3.3.3</mockito.version>
   </properties>
 
