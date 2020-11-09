@@ -3,12 +3,18 @@
  */
 package com.tenefit.demo.microservice.temperatureConverter;
 
+import static com.tenefit.demo.microservice.temperatureConverter.TemperatureConverter.Protocol.PLAINTEXT;
+import static com.tenefit.demo.microservice.temperatureConverter.TemperatureConverter.Protocol.SSL;
 import static java.lang.System.currentTimeMillis;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Properties;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.concurrent.ExecutionException;
 
 import javax.inject.Inject;
@@ -28,15 +34,28 @@ import com.github.rvesse.airline.HelpOption;
 import com.github.rvesse.airline.SingleCommand;
 import com.github.rvesse.airline.annotations.Command;
 import com.github.rvesse.airline.annotations.Option;
+import com.github.rvesse.airline.annotations.restrictions.AllowedEnumValues;
 import com.github.rvesse.airline.annotations.restrictions.NotBlank;
 import com.github.rvesse.airline.annotations.restrictions.NotEmpty;
 import com.github.rvesse.airline.annotations.restrictions.Once;
 import com.github.rvesse.airline.annotations.restrictions.Required;
+import com.github.rvesse.airline.help.Help;
+import com.github.rvesse.airline.parser.errors.ParseException;
 
 @Command(name = "temperature-converter", description = "Microservice for converting temperatures")
 public class TemperatureConverter
 {
+    public enum Protocol
+    {
+        PLAINTEXT,
+        SSL
+    };
+
     private final String defaultGroupId = String.format("temperature-converter-%x", currentTimeMillis());
+
+    private final String defaultInputTopic = "sensors";
+    private final String defaultOutputTopic = "readings";
+    private final String defaultRequestsTopic = "readings.requests";
 
     private final Duration kafkaPollTimeout = Duration.ofSeconds(1000);
 
@@ -45,7 +64,8 @@ public class TemperatureConverter
 
     @Option(
         name = { "--bootstrap-servers", "-b" },
-        description = "Address for Kafka. e.g. kafka:9092")
+        description = "Address for Kafka. e.g. kafka:9092\n" +
+            "Ports 9093 and 9094 default to protocol SSL. All others default to PLAINTEXT")
     @Required
     @Once
     @NotBlank
@@ -53,31 +73,37 @@ public class TemperatureConverter
     private String kafkaAddress;
 
     @Option(
-        name = { "--input-topic" },
+        name = { "--input-topic", "-i" },
         description = "Input topic with raw sensor readings")
-    @Required
     @Once
     @NotBlank
     @NotEmpty
     private String inputTopic;
 
     @Option(
-        name = { "--output-topic" },
+        name = { "--output-topic", "-o" },
         description = "Output topic for converted readings")
-    @Required
     @Once
     @NotBlank
     @NotEmpty
     private String outputTopic;
 
     @Option(
-        name = { "--requests-topic" },
+        name = { "--requests-topic", "-r" },
         description = "Input topic for microservice command requests")
-    @Required
     @Once
     @NotBlank
     @NotEmpty
     private String requestsTopic;
+
+    @Option(
+        name = { "--protocol", "-p" },
+        description = "Type of connection to make")
+    @AllowedEnumValues(Protocol.class)
+    @Once
+    @NotBlank
+    @NotEmpty
+    private Protocol protocol;
 
     @Option(
         name = "--consumer-property",
@@ -93,28 +119,48 @@ public class TemperatureConverter
     @NotEmpty
     private List<String> producerPropertiesArgs;
 
-    private final Properties consumerOptions;
-    private final Properties producerOptions;
+    @Option(
+        name = { "--verbose", "-v" },
+        description = "Show verbose output at start up")
+    @Once
+    private boolean verbose;
+
+    private final SortedMap<String, Object> consumerOptions;
+    private final SortedMap<String, Object> producerOptions;
 
     private volatile boolean isRunning = true;
 
-    public static void main(String[] args) throws InterruptedException, ExecutionException
+    public static void main(String[] args) throws InterruptedException, ExecutionException, IOException
     {
         SingleCommand<TemperatureConverter> parser = SingleCommand.singleCommand(TemperatureConverter.class);
         TemperatureConverter microservice = parser.parse(args);
-        microservice.start();
+        try
+        {
+            microservice.start();
+        }
+        catch (ParseException e)
+        {
+            System.err.format("Error: %s\n\n", e.getMessage());
+            Help.help(parser.getCommandMetadata());
+        }
+
     }
 
     public TemperatureConverter() throws Exception
     {
-        consumerOptions = new Properties();
+        consumerOptions = new TreeMap<>();
         consumerOptions.put("group.id", defaultGroupId);
 
-        producerOptions = new Properties();
+        producerOptions = new TreeMap<>();
     }
 
     public void start() throws InterruptedException, ExecutionException
     {
+        if (help.showHelpIfRequested())
+        {
+            return;
+        }
+
         processCommandLine();
 
         final Thread myThread = Thread.currentThread();
@@ -152,14 +198,40 @@ public class TemperatureConverter
                 System.out.format("Cause: %s\n", ex.getCause().getMessage());
             }
         }
-
     }
 
     private void processCommandLine()
     {
-        if (help.showHelpIfRequested())
+        if (inputTopic == null)
         {
-            return;
+            inputTopic = defaultInputTopic;
+        }
+
+        if (outputTopic == null)
+        {
+            outputTopic = defaultOutputTopic;
+        }
+
+        if (requestsTopic == null)
+        {
+            requestsTopic = defaultRequestsTopic;
+        }
+
+        if (protocol == null)
+        {
+            String[] addressParts = kafkaAddress.split(":");
+            if (addressParts.length != 2)
+            {
+                throw new ParseException("The Kafka address %s is not formatted as <host>:<port>", kafkaAddress);
+            }
+            if (addressParts[1].equals("9093") || addressParts[1].equals("9094"))
+            {
+                protocol = SSL;
+            }
+            else
+            {
+                protocol = PLAINTEXT;
+            }
         }
 
         consumerOptions.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaAddress);
@@ -170,6 +242,15 @@ public class TemperatureConverter
         producerOptions.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         producerOptions.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
 
+        if (protocol == SSL)
+        {
+            consumerOptions.put("security.protocol", "SSL");
+            consumerOptions.put("ssl.endpoint.identification.algorithm", "");
+            producerOptions.put("security.protocol", "SSL");
+            producerOptions.put("ssl.endpoint.identification.algorithm", "");
+        }
+
+        // Do command line arguments last so they can override default behavior
         if (consumerPropertiesArgs != null)
         {
             consumerPropertiesArgs.forEach(this::parseKafkaConsumerProperty);
@@ -196,6 +277,24 @@ public class TemperatureConverter
 
     private void startListening() throws InterruptedException, ExecutionException
     {
+        if (verbose)
+        {
+            System.out.format("kafka address:          %s\n", kafkaAddress);
+            System.out.format("input topic:            %s\n", inputTopic);
+            System.out.format("output topic:           %s\n", outputTopic);
+            System.out.format("readings request topic: %s\n", requestsTopic);
+            System.out.println("consumer properties:");
+            for (Map.Entry<String, Object> prop : consumerOptions.entrySet())
+            {
+                System.out.format("  %s=%s\n", prop.getKey(), prop.getValue());
+            }
+            System.out.println("producer properties:");
+            for (Entry<String, Object> prop : producerOptions.entrySet())
+            {
+                System.out.format("  %s=%s\n", prop.getKey(), prop.getValue());
+            }
+        }
+
         try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(consumerOptions))
         {
             consumer.subscribe(Arrays.asList(inputTopic, requestsTopic));
