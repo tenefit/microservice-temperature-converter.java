@@ -74,27 +74,27 @@ public class TemperatureConverter
 
     @Option(
         name = { "--input-topic", "-i" },
-        description = "Input topic with raw sensor readings")
+        description = "Input topic with raw sensor readings. Defaults to \"" + defaultInputTopic + "\"")
     @Once
     @NotBlank
     @NotEmpty
-    private String inputTopic;
+    private String inputTopic = defaultInputTopic;
 
     @Option(
         name = { "--output-topic", "-o" },
-        description = "Output topic for converted readings")
+        description = "Output topic for converted readings. Defaults to \"" + defaultOutputTopic + "\"")
     @Once
     @NotBlank
     @NotEmpty
-    private String outputTopic;
+    private String outputTopic = defaultInputTopic;
 
     @Option(
         name = { "--requests-topic", "-r" },
-        description = "Input topic for microservice command requests")
+        description = "Input topic for microservice command requests. Defaults to \"" + defaultRequestsTopic + "\"")
     @Once
     @NotBlank
     @NotEmpty
-    private String requestsTopic;
+    private String requestsTopic = defaultRequestsTopic;
 
     @Option(
         name = { "--protocol", "-p" },
@@ -202,21 +202,6 @@ public class TemperatureConverter
 
     private void processCommandLine()
     {
-        if (inputTopic == null)
-        {
-            inputTopic = defaultInputTopic;
-        }
-
-        if (outputTopic == null)
-        {
-            outputTopic = defaultOutputTopic;
-        }
-
-        if (requestsTopic == null)
-        {
-            requestsTopic = defaultRequestsTopic;
-        }
-
         if (protocol == null)
         {
             String[] addressParts = kafkaAddress.split(":");
