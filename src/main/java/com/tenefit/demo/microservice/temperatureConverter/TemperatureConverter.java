@@ -53,7 +53,7 @@ public class TemperatureConverter
 
     private final String defaultGroupId = String.format("temperature-converter-%x", currentTimeMillis());
 
-    private final String defaultInputTopic = "sensors";
+    private final String defaultInputTopic = "woot";
     private final String defaultOutputTopic = "readings";
     private final String defaultRequestsTopic = "readings.requests";
 
@@ -86,7 +86,7 @@ public class TemperatureConverter
     @Once
     @NotBlank
     @NotEmpty
-    private String outputTopic = defaultInputTopic;
+    private String outputTopic = defaultOutputTopic;
 
     @Option(
         name = { "--requests-topic", "-r" },
