@@ -53,10 +53,6 @@ public class TemperatureConverter
 
     private final String defaultGroupId = String.format("temperature-converter-%x", currentTimeMillis());
 
-    private final String defaultInputTopic = "woot";
-    private final String defaultOutputTopic = "readings";
-    private final String defaultRequestsTopic = "readings.requests";
-
     private final Duration kafkaPollTimeout = Duration.ofSeconds(1000);
 
     @Inject
@@ -74,27 +70,27 @@ public class TemperatureConverter
 
     @Option(
         name = { "--input-topic", "-i" },
-        description = "Input topic with raw sensor readings. Defaults to \"" + defaultInputTopic + "\"")
+        description = "Input topic with raw sensor readings. Defaults to \"sensors\"")
     @Once
     @NotBlank
     @NotEmpty
-    private String inputTopic = defaultInputTopic;
+    private String inputTopic = "sensors";
 
     @Option(
         name = { "--output-topic", "-o" },
-        description = "Output topic for converted readings. Defaults to \"" + defaultOutputTopic + "\"")
+        description = "Output topic for converted readings. Defaults to \"readings\"")
     @Once
     @NotBlank
     @NotEmpty
-    private String outputTopic = defaultOutputTopic;
+    private String outputTopic = "readings";
 
     @Option(
         name = { "--requests-topic", "-r" },
-        description = "Input topic for microservice command requests. Defaults to \"" + defaultRequestsTopic + "\"")
+        description = "Input topic for microservice command requests. Defaults to \"readings.requests\"")
     @Once
     @NotBlank
     @NotEmpty
-    private String requestsTopic = defaultRequestsTopic;
+    private String requestsTopic = "readings.requests";
 
     @Option(
         name = { "--protocol", "-p" },
