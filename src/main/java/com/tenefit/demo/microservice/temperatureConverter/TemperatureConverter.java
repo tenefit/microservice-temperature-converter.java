@@ -126,7 +126,7 @@ public class TemperatureConverter
 
     private volatile boolean isRunning = true;
 
-    public static void main(String[] args) throws InterruptedException, ExecutionException, IOException
+    public static void main(String[] args) throws Exception
     {
         SingleCommand<TemperatureConverter> parser = SingleCommand.singleCommand(TemperatureConverter.class);
         TemperatureConverter microservice = parser.parse(args);
