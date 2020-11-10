@@ -7,7 +7,6 @@ import static com.tenefit.demo.microservice.temperatureConverter.TemperatureConv
 import static com.tenefit.demo.microservice.temperatureConverter.TemperatureConverter.Protocol.SSL;
 import static java.lang.System.currentTimeMillis;
 
-import java.io.IOException;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
